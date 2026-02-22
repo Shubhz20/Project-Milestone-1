@@ -1,120 +1,129 @@
-# Study Planner System — A Secure Backend-Focused Study Management Platform
-## Problem Statement
-Most student productivity or planner applications focus only on simple CRUD operations such as creating tasks or displaying lists. While these applications demonstrate basic functionality, they fail to address important backend engineering challenges such as:
-Secure user authentication and access control
-Structured relationships between users, subjects, and tasks
-Persistent tracking of study sessions
-Proper backend architecture using layered design
-Maintainable and scalable code organization
-In real-world productivity platforms, the complexity lies in system architecture, secure API design, data modeling, and structured backend logic, rather than just frontend interfaces.
-## Proposed Solution
-The Study Planner System is a backend-focused study management platform designed to help users organize their study workflow in a structured and secure manner.
-Instead of treating tasks as isolated records, the system models study activity using clearly defined entities:
-Users own subjects
-Subjects contain tasks
-Tasks represent planned study goals
-Study sessions track actual study activity
-The system ensures secure access using JWT authentication and enforces proper data ownership.
-## Key Features
-Secure user registration and login using JWT authentication
-Subject management for organizing study areas
-Task creation, updating, deletion, and completion tracking
-Study session tracking with start and end time recording
-Automatic calculation of study session duration
-User-specific data isolation and access control
-Backend-first architecture with clean layered design
-## User Roles and Workflow
-User
-Register and login securely
-Create and manage subjects
-Create and manage study tasks
-Mark tasks as completed
-Start and end study sessions
-View study history and progress
-## Target Users
-Students managing daily study plans
-Developers learning backend system design
-Academic projects requiring structured backend implementation
-Recruiters evaluating backend engineering skills
-## Technology Stack
-Backend
-Node.js
-TypeScript
-Express.js
-MongoDB
-Mongoose ORM
-JWT Authentication
-bcrypt for password hashing
-## Development Tools
-VS Code
-Git and GitHub
-Postman
-## Backend Architecture and Code Structure
-The backend is implemented using a layered architecture to ensure scalability, maintainability, and separation of concerns.
-The main layers include:
-## Controllers
-Handle incoming HTTP requests and return responses.
-Example:
-AuthController
-TaskController
-SubjectController
-SessionController
-## Services
-Contain business logic and coordinate operations between controllers and repositories.
-Example:
-AuthService
-TaskService
-SubjectService
-SessionService
-## Repositories
-Handle database operations and interact with MongoDB.
-Example:
-UserRepository
-TaskRepository
-SubjectRepository
-SessionRepository
-## Models
-Define the database schema and structure of entities.
-Example:
-User
-Subject
-Task
-StudySession
-This architecture improves:
-Code maintainability
-Scalability
-Separation of responsibilities
-System clarity
-## System Capabilities
-The system supports:
-Secure authentication using JWT tokens
-Protected routes using authentication middleware
-Persistent data storage in MongoDB
-Structured relationships between entities
-Clean and modular backend code organization
-## Expected Outcome
-A fully functional backend system that:
-Demonstrates clean architecture principles
-Implements secure authentication and authorization
-Uses proper database schema design
-Follows object-oriented and modular design principles
-Reflects real-world backend development practices
-## Development Timeline
-Phase 1
-Backend setup and MongoDB schema design
-Phase 2
-User authentication using JWT
-Phase 3
-Subject and task management implementation
-Phase 4
-Study session tracking implementation
-Phase 5
-Testing and GitHub deployment
-## Additional Notes
-The project follows a backend-first development approach
-Focus is on backend architecture and system design
-Frontend can be added later as a separate layer
-Designed to demonstrate real-world backend engineering practices
-## Disclaimer
-This project is designed as a backend system design and engineering learning project.
-It focuses on demonstrating clean architecture, secure authentication, and structured backend implementation rather than frontend complexity.
+# 🏋️‍♂️ Fitness Tracker Backend — Secure & Scalable Fitness Management
+
+## 📌 Project Overview
+
+The **Fitness Tracker System** is a robust, backend-first application designed to help users track their fitness journey with precision. Unlike simple "to-do" apps, this system models fitness as a structured lifecycle: defining long-term **Programs**, setting specific **Goals**, and logging actual **Workout Sessions**.
+
+Built with a focus on **Clean Architecture**, the system ensures proper data isolation, secure authentication, and a scalable foundation for health data tracking.
+
+---
+
+## 🚀 Key Features
+
+- **Secure Authentication**: Stateless JWT-based registration and login system.
+- **Workout Programs**: Organize fitness into high-level categories (e.g., Strength, Cardio, Yoga).
+- **Goal Tracking**: Define measurable targets within programs (e.g., "Achieve 50 pushups").
+- **Session Logging**: Track the duration and effort of actual workout sessions.
+- **Data Privacy**: Strict ownership middleware restricts data access to authorized users only.
+- **Layered Design**: Modular code structure (Controller → Service → Repository → Model).
+
+---
+
+## 🛠 Tech Stack
+
+| Technology     | Description                                         |
+| :------------- | :-------------------------------------------------- |
+| **Node.js**    | JavaScript runtime environment                      |
+| **TypeScript** | Strongly typed programming language                 |
+| **Express.js** | Fast and minimalist web framework                   |
+| **MongoDB**    | NoSQL document database                             |
+| **Mongoose**   | Elegant MongoDB object modeling for Node.js         |
+| **JWT**        | Secure industry-standard token-based authentication |
+| **bcrypt**     | Advanced password hashing and security              |
+
+---
+
+## 🏗 Backend Architecture
+
+The system follows the **Layered Architecture** pattern to ensure separation of concerns and maintainability:
+
+1. **Controllers**: Handle HTTP requests, parse input, and return standardized responses.
+2. **Services**: Contain the core business logic and coordinate between components.
+3. **Repositories**: Abstract database operations, providing a clean interface for data persistence.
+4. **Models**: Define the schema, types, and validation rules for MongoDB entities.
+5. **Middlewares**: Enforce security policies and authentication checks.
+
+---
+
+## 📂 Project Structure
+
+```bash
+src/
+├── config/         # App configuration (DB, Env)
+├── controllers/    # Request handlers
+├── middlewares/    # Custom middlewares (Auth)
+├── models/         # Mongoose schemas
+├── repositories/   # Data access layer
+├── routes/         # API endpoint definitions
+├── services/       # Business logic layer
+├── app.ts          # Express application setup
+└── server.ts       # Entry point
+```
+
+---
+
+## 🚦 Getting Started
+
+### Prerequisites
+
+- Node.js (v18 or higher)
+- MongoDB (Local or Atlas)
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Ronxak/SESD-Project-Milestone-1.git
+   cd SESD-Project-Milestone-1
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Configure Environment Variables:
+   Create a `.env` file in the root directory:
+   ```env
+   PORT=5000
+   MONGO_URI=your_mongodb_connection_string
+   JWT_SECRET=your_super_secret_key
+   ```
+
+### Running the Application
+
+```bash
+# Development mode
+npm run dev
+```
+
+---
+
+## 📖 API Documentation (Summary)
+
+### Authentication
+
+- `POST /api/auth/register` — Create a new account
+- `POST /api/auth/login` — Sign in and receive JWT
+
+### Workout Programs
+
+- `POST /api/programs` — Create a new program
+- `GET /api/programs` — Retrieve user's programs
+- `DELETE /api/programs/:id` — Remove a program
+
+### Goals
+
+- `POST /api/goals` — Set a fitness goal
+- `GET /api/goals` — View all goals
+- `PATCH /api/goals/:id` — Update goal status
+
+### Workout Sessions
+
+- `POST /api/workouts` — Log a training session
+- `GET /api/workouts` — View workout history
+
+---
+
+## 🛡 Disclaimer
+
+This project is developed as part of the SESD Project Milestone-1. It focuses on demonstrating backend engineering proficiency, including architectural patterns, secure API design, and structured data modeling.
