@@ -1,13 +1,24 @@
-import express from "express";
-import { getPrograms, createProgram, deleteProgram } from "../controllers/program.controller";
+import { Router } from "express";
+import { ProgramController } from "../controllers/program.controller";
 import { authMiddleware } from "../middlewares/auth.middleware";
+import { requireOwnership } from "../middlewares/ownership.middleware";
+import { validateRequest } from "../middlewares/validate.middleware";
+import { createProgramSchema, idParamSchema } from "../validators/program.validator";
+import { WorkoutProgram } from "../models/WorkoutProgram";
 
-const router = express.Router();
+const router = Router();
+const controller = new ProgramController();
 
-router.use(authMiddleware as any);
+router.use(authMiddleware);
 
-router.post("/", createProgram);
-router.get("/", getPrograms);
-router.delete("/:id", deleteProgram);
+router.post("/", validateRequest(createProgramSchema), controller.create);
+router.get("/", controller.list);
+
+router.delete(
+  "/:id",
+  validateRequest(idParamSchema, "params"),
+  requireOwnership(WorkoutProgram),
+  controller.remove
+);
 
 export default router;

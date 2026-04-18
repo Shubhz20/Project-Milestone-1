@@ -1,46 +1,70 @@
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import jwt, { SignOptions } from "jsonwebtoken";
 import { UserRepository } from "../repositories/user.repository";
+import { env } from "../config/env";
+import { BadRequestError, ConflictError, UnauthorizedError } from "../errors/AppError";
+import { IUser } from "../models/User";
 
+export interface AuthCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegistrationPayload extends AuthCredentials {
+  name: string;
+}
+
+export interface LoginResult {
+  token: string;
+  user: { id: string; name: string; email: string };
+}
+
+/**
+ * AuthService — orchestrates registration and login.
+ *
+ * Keeps bcrypt/jwt specifics out of the controllers. The repository is
+ * injected through the constructor so tests (and future swaps) don't need
+ * to monkey-patch the module.
+ */
 export class AuthService {
-  repo = new UserRepository();
+  private static readonly BCRYPT_ROUNDS = 10;
 
-  async register(name: string, email: string, password: string) {
+  constructor(private readonly users: UserRepository = new UserRepository()) {}
+
+  async register(input: RegistrationPayload): Promise<IUser> {
+    const { name, email, password } = input;
     if (!name || !email || !password) {
-      throw new Error("Name, email, and password are required");
+      throw new BadRequestError("Name, email, and password are required");
     }
 
-    const exists = await this.repo.findByEmail(email);
+    const existing = await this.users.findByEmail(email);
+    if (existing) throw new ConflictError("An account with this email already exists");
 
-    if (exists) throw new Error("User exists");
-
-    const hashed = await bcrypt.hash(password, 10);
-
-    return this.repo.create({
+    const hashed = await bcrypt.hash(password, AuthService.BCRYPT_ROUNDS);
+    return this.users.create({
       name,
-      email,
-      password: hashed
-    });
+      email: email.toLowerCase(),
+      password: hashed,
+    } as Partial<IUser>);
   }
 
-  async login(email: string, password: string) {
-    const user = await this.repo.findByEmail(email);
+  async login({ email, password }: AuthCredentials): Promise<LoginResult> {
+    const user = await this.users.findByEmail(email);
+    if (!user) throw new UnauthorizedError("Invalid email or password");
 
-    if (!user) throw new Error("User not found");
+    const withPassword = await this.users.findByIdWithPassword(user._id.toString());
+    if (!withPassword) throw new UnauthorizedError("Invalid email or password");
 
-    // Since password has select: false, we need to explicitly select it
-    const userWithPassword = await this.repo.findById(user._id.toString(), true);
+    const valid = await bcrypt.compare(password, withPassword.password);
+    if (!valid) throw new UnauthorizedError("Invalid email or password");
 
-    if (!userWithPassword) throw new Error("User not found");
+    const token = jwt.sign({ userId: user._id.toString() }, env.JWT_SECRET, {
+      expiresIn: env.JWT_EXPIRES_IN,
+    } as SignOptions);
 
-    const valid = await bcrypt.compare(password, userWithPassword.password);
-
-    if (!valid) throw new Error("Invalid password");
-
-    return jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET as string,
-      { expiresIn: "24h" }
-    );
+    return {
+      token,
+      user: { id: user._id.toString(), name: user.name, email: user.email },
+    };
   }
 }

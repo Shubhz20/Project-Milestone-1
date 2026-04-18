@@ -1,18 +1,21 @@
-import { User } from "../models/User";
+import { User, IUser } from "../models/User";
+import { BaseRepository } from "./base.repository";
 
-export class UserRepository {
-  async create(data: any) {
-    return User.create(data);
+export class UserRepository extends BaseRepository<IUser> {
+  constructor() {
+    super(User);
   }
 
-  async findByEmail(email: string) {
-    return User.findOne({ email });
+  findByEmail(email: string): Promise<IUser | null> {
+    return this.model.findOne({ email: email.toLowerCase() }).exec();
   }
 
-  async findById(id: string, selectPassword: boolean = false) {
-    if (selectPassword) {
-      return User.findById(id).select("+password");
-    }
-    return User.findById(id);
+  /**
+   * Password is `select: false` on the schema, so a normal `findById` will
+   * omit it. This method explicitly opts back in — used only by the auth
+   * service during login.
+   */
+  findByIdWithPassword(id: string): Promise<IUser | null> {
+    return this.model.findById(id).select("+password").exec();
   }
 }

@@ -1,37 +1,29 @@
-import { Request, Response } from "express"; 
+import { Response } from "express";
 import { ProgramService } from "../services/program.service";
 import { AuthRequest } from "../middlewares/auth.middleware";
+import { asyncHandler } from "../middlewares/asyncHandler";
 
-const programService = new ProgramService();
+export class ProgramController {
+  constructor(private readonly programs: ProgramService = new ProgramService()) {}
 
-export const createProgram = async (req: AuthRequest, res: Response) => {
-  try {
-    const { name, description } = req.body;
-    const program = await programService.createProgram({
-      userId: req.userId,
+  create = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { name, description, category } = req.body;
+    const program = await this.programs.createProgram({
+      userId: req.userId!,
       name,
       description,
+      category,
     });
     res.status(201).json(program);
-  } catch (error) {
-    res.status(500).json({ message: "Server error" });
-  }
-};
+  });
 
-export const getPrograms = async (req: AuthRequest, res: Response) => {
-  try {
-    const programs = await programService.getPrograms(req.userId!);
+  list = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const programs = await this.programs.getPrograms(req.userId!);
     res.json(programs);
-  } catch (error) {
-    res.status(500).json({ message: "Server error" });
-  }
-};
+  });
 
-export const deleteProgram = async (req: AuthRequest, res: Response) => {
-  try {
-    await programService.deleteProgram(req.params.id as string);
+  remove = asyncHandler(async (req: AuthRequest, res: Response) => {
+    await this.programs.deleteProgram(req.params.id as string);
     res.status(204).send();
-  } catch (error) {
-    res.status(500).json({ message: "Server error" });
-  }
-};
+  });
+}

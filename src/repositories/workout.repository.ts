@@ -1,19 +1,16 @@
-import { WorkoutSession } from "../models/WorkoutSession";
+import { WorkoutSession, IWorkoutSession } from "../models/WorkoutSession";
+import { BaseRepository } from "./base.repository";
 
-export class WorkoutRepository {
-  async create(data: any) {
-    return WorkoutSession.create(data);
+export class WorkoutRepository extends BaseRepository<IWorkoutSession> {
+  constructor() {
+    super(WorkoutSession);
   }
 
-  async findByUser(userId: string) {
-    return WorkoutSession.find({ userId });
+  findByUser(userId: string): Promise<IWorkoutSession[]> {
+    return this.model.find({ userId }).sort({ startTime: -1 }).exec();
   }
 
-  async findById(id: string) {
-    return WorkoutSession.findById(id);
-  }
-
-  async update(id: string, data: any) {
-    return WorkoutSession.findByIdAndUpdate(id, data, { new: true });
+  findActiveByUser(userId: string): Promise<IWorkoutSession | null> {
+    return this.model.findOne({ userId, endTime: { $exists: false } }).exec();
   }
 }

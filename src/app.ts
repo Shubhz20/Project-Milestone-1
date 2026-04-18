@@ -5,13 +5,36 @@ import programRoutes from "./routes/program.routes";
 import goalRoutes from "./routes/goal.routes";
 import workoutRoutes from "./routes/workout.routes";
 
-const app = express();
+import { corsMiddleware } from "./middlewares/cors.middleware";
+import { requestLogger } from "./middlewares/logger.middleware";
+import { errorHandler, notFoundHandler } from "./middlewares/error.middleware";
 
-app.use(express.json());
+/**
+ * Application factory — builds a configured Express app. Factoring this out
+ * of `server.ts` lets the test suite spin up an identical app against an
+ * in-memory MongoDB without booting the HTTP listener.
+ */
+export const createApp = () => {
+  const app = express();
 
-app.use("/api/auth", authRoutes);
-app.use("/api/programs", programRoutes);
-app.use("/api/goals", goalRoutes);
-app.use("/api/workouts", workoutRoutes);
+  app.use(corsMiddleware);
+  app.use(express.json({ limit: "100kb" }));
+  app.use(requestLogger);
 
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  app.use("/api/auth", authRoutes);
+  app.use("/api/programs", programRoutes);
+  app.use("/api/goals", goalRoutes);
+  app.use("/api/workouts", workoutRoutes);
+
+  app.use(notFoundHandler);
+  app.use(errorHandler);
+
+  return app;
+};
+
+const app = createApp();
 export default app;

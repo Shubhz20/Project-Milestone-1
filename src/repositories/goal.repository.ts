@@ -1,19 +1,16 @@
-import { FitnessGoal } from "../models/FitnessGoal";
+import { FitnessGoal, IFitnessGoal } from "../models/FitnessGoal";
+import { BaseRepository } from "./base.repository";
 
-export class GoalRepository {
-  async create(data: any) {
-    return FitnessGoal.create(data);
+export class GoalRepository extends BaseRepository<IFitnessGoal> {
+  constructor() {
+    super(FitnessGoal);
   }
 
-  async findByUser(userId: string) {
-    return FitnessGoal.find({ userId });
+  findByUser(userId: string): Promise<IFitnessGoal[]> {
+    return this.model.find({ userId }).sort({ createdAt: -1 }).exec();
   }
 
-  async update(id: string, data: any) {
-    return FitnessGoal.findByIdAndUpdate(id, data, { new: true });
-  }
-
-  async delete(id: string) {
-    return FitnessGoal.findByIdAndDelete(id);
+  findByProgram(programId: string): Promise<IFitnessGoal[]> {
+    return this.model.find({ programId }).exec();
   }
 }

@@ -1,22 +1,27 @@
 import { ProgramRepository } from "../repositories/program.repository";
-import { WorkoutProgram } from "../models/WorkoutProgram";
+import { IWorkoutProgram } from "../models/WorkoutProgram";
+import { NotFoundError } from "../errors/AppError";
+
+export interface CreateProgramInput {
+  userId: string;
+  name: string;
+  description?: string;
+  category?: string;
+}
 
 export class ProgramService {
-  private programRepo: ProgramRepository;
+  constructor(private readonly repo: ProgramRepository = new ProgramRepository()) {}
 
-  constructor() {
-    this.programRepo = new ProgramRepository();
+  createProgram(input: CreateProgramInput): Promise<IWorkoutProgram> {
+    return this.repo.create(input as unknown as Partial<IWorkoutProgram>);
   }
 
-  async createProgram(data: any) {
-    return this.programRepo.create(data);
+  getPrograms(userId: string): Promise<IWorkoutProgram[]> {
+    return this.repo.findByUser(userId);
   }
 
-  async getPrograms(userId: string) {
-    return this.programRepo.findByUser(userId);
-  }
-
-  async deleteProgram(id: string) {
-    return this.programRepo.delete(id);
+  async deleteProgram(id: string): Promise<void> {
+    const ok = await this.repo.deleteById(id);
+    if (!ok) throw new NotFoundError("Program not found");
   }
 }
