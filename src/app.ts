@@ -21,6 +21,18 @@ export const createApp = () => {
   app.use(express.json({ limit: "100kb" }));
   app.use(requestLogger);
 
+  app.get("/", (_req, res) => {
+    res.json({
+      message: "Fitness Tracker API is running",
+      version: "1.0.0",
+      docs: "See README.md for API documentation",
+      links: {
+        health: "/api/health",
+        auth: "/api/auth",
+      },
+    });
+  });
+
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });

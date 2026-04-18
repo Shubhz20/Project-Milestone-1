@@ -199,6 +199,27 @@ Pages: **Login**, **Register**, **Programs**, **Goals**, **Workouts**.
 Auth is stored in `localStorage` and attached as `Authorization: Bearer
 <token>` to every outgoing request; token validity is checked server-side.
 
+## Deploying the backend to Vercel
+
+The backend ships with a Vercel-ready serverless adapter:
+
+- `api/index.ts` — wraps the Express app as a `(req, res)` handler. Uses the
+  `Database` Singleton so the Mongo connection is reused across warm invocations.
+- `vercel.json` — rewrites every path (`/(.*)` → `/api/index.ts`) so the
+  Express router stays the single source of truth for URL mapping.
+
+Required environment variables in the Vercel project settings:
+
+- `MONGO_URI` — a reachable MongoDB connection string (Atlas recommended).
+- `JWT_SECRET` — a long, random string.
+- `JWT_EXPIRES_IN` — e.g. `7d`.
+- `CORS_ORIGIN` — the deployed frontend origin, or `*` for a quick demo.
+- `NODE_ENV` — `production`.
+
+You don't need a custom build command; Vercel will pick up `@vercel/node` from
+`vercel.json` and compile `api/index.ts` (which in turn pulls in `src/**`).
+`npm run build` remains available locally for producing `dist/` via `tsc`.
+
 ## Diagrams
 
 The `.md` diagrams at the root render with any Mermaid-aware viewer
