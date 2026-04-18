@@ -1,129 +1,230 @@
-# 🏋️‍♂️ Fitness Tracker Backend — Secure & Scalable Fitness Management
+# Fitness Tracker — Full Stack (SESD Project Milestone 1)
 
-## 📌 Project Overview
+A full-stack fitness tracking application built to demonstrate object-oriented
+design, clean layered architecture, and idiomatic use of classic design
+patterns. The backend is the centre of gravity (~75% of the work) and is
+paired with a small React SPA that exercises the full surface of the API.
 
-The **Fitness Tracker System** is a robust, backend-first application designed to help users track their fitness journey with precision. Unlike simple "to-do" apps, this system models fitness as a structured lifecycle: defining long-term **Programs**, setting specific **Goals**, and logging actual **Workout Sessions**.
+## Project goals
 
-Built with a focus on **Clean Architecture**, the system ensures proper data isolation, secure authentication, and a scalable foundation for health data tracking.
+The project models fitness tracking as a lifecycle rather than a checklist:
 
----
+- A user signs up and signs in with a stateless JWT.
+- They create **Workout Programs** — long-lived plans such as "Foundations of
+  Strength" or "Zone 2 Cardio Base", each tagged with a category.
+- Inside a program they set **Fitness Goals** (e.g. "sub-25min 5k") that can
+  be updated and marked achieved.
+- They log **Workout Sessions** — starting a session, ending it later, and
+  letting the system compute duration and estimated calories from the
+  program's category.
 
-## 🚀 Key Features
+## Architecture
 
-- **Secure Authentication**: Stateless JWT-based registration and login system.
-- **Workout Programs**: Organize fitness into high-level categories (e.g., Strength, Cardio, Yoga).
-- **Goal Tracking**: Define measurable targets within programs (e.g., "Achieve 50 pushups").
-- **Session Logging**: Track the duration and effort of actual workout sessions.
-- **Data Privacy**: Strict ownership middleware restricts data access to authorized users only.
-- **Layered Design**: Modular code structure (Controller → Service → Repository → Model).
+The backend follows a strict layered architecture. Each layer depends only on
+the layer below it, which keeps responsibilities narrow and makes the code
+easy to test in isolation.
 
----
-
-## 🛠 Tech Stack
-
-| Technology     | Description                                         |
-| :------------- | :-------------------------------------------------- |
-| **Node.js**    | JavaScript runtime environment                      |
-| **TypeScript** | Strongly typed programming language                 |
-| **Express.js** | Fast and minimalist web framework                   |
-| **MongoDB**    | NoSQL document database                             |
-| **Mongoose**   | Elegant MongoDB object modeling for Node.js         |
-| **JWT**        | Secure industry-standard token-based authentication |
-| **bcrypt**     | Advanced password hashing and security              |
-
----
-
-## 🏗 Backend Architecture
-
-The system follows the **Layered Architecture** pattern to ensure separation of concerns and maintainability:
-
-1. **Controllers**: Handle HTTP requests, parse input, and return standardized responses.
-2. **Services**: Contain the core business logic and coordinate between components.
-3. **Repositories**: Abstract database operations, providing a clean interface for data persistence.
-4. **Models**: Define the schema, types, and validation rules for MongoDB entities.
-5. **Middlewares**: Enforce security policies and authentication checks.
-
----
-
-## 📂 Project Structure
-
-```bash
-src/
-├── config/         # App configuration (DB, Env)
-├── controllers/    # Request handlers
-├── middlewares/    # Custom middlewares (Auth)
-├── models/         # Mongoose schemas
-├── repositories/   # Data access layer
-├── routes/         # API endpoint definitions
-├── services/       # Business logic layer
-├── app.ts          # Express application setup
-└── server.ts       # Entry point
+```
+Routes  →  Controllers  →  Services  →  Repositories  →  Mongoose Models
+                                │
+                                └──> Domain services (CalorieStrategy, …)
 ```
 
----
+- **Routes** wire HTTP verbs to controller methods and attach the middleware
+  chain (auth → validate → ownership → handler).
+- **Controllers** are thin: they pull the validated payload off the request,
+  call a service, and serialise the result. All async work is wrapped in
+  `asyncHandler` so errors flow to a single global error handler.
+- **Services** own business rules. They accept repositories via constructor
+  injection, which means every service can be instantiated with a fake
+  repository in tests.
+- **Repositories** extend a generic `BaseRepository<T>` (Template Method) and
+  are the only place that talks to Mongoose directly.
+- **Models** hold the schema, indexes, and a handful of invariants
+  (`toJSON` strips the password, workout sessions reject `endTime <= startTime`).
 
-## 🚦 Getting Started
+### Design patterns in use
+
+| Pattern             | Where                                              | Why                                                                 |
+| :------------------ | :------------------------------------------------- | :------------------------------------------------------------------ |
+| **Singleton**       | `src/config/db.ts` — `Database`                    | A single connection lifecycle for the whole process.                |
+| **Template Method** | `src/repositories/base.repository.ts`              | Shared CRUD; subclasses add their domain-specific queries.          |
+| **Strategy**        | `src/services/calorie/` — `CalorieStrategy`        | Each program category plugs in its own MET-based calorie formula.   |
+| **Factory**         | `CalorieStrategyFactory.for(category)`             | Callers depend on the interface, not the concrete strategies.       |
+| **Dependency Injection** | Services take repositories via constructor     | Trivial to substitute fakes in unit tests.                          |
+
+### Security model
+
+- Passwords are hashed with `bcrypt` (cost 10 in prod, 4 in tests for speed).
+- Authentication is stateless JWT. Tokens are verified per-request in
+  `auth.middleware.ts`.
+- `ownership.middleware.ts` is mounted on every mutation route and rejects
+  any attempt to touch a document owned by another user.
+- Error responses use a centralised `AppError` hierarchy with a consistent
+  JSON envelope (`{ error: { message, code, details? } }`).
+
+## Repository layout
+
+```
+.
+├── src/                     # Backend — Express + TypeScript
+│   ├── app.ts               # createApp() factory, middleware stack
+│   ├── server.ts            # Process entry point
+│   ├── config/              # Env + DB singleton
+│   ├── controllers/         # Thin HTTP handlers (class-based)
+│   ├── errors/              # AppError hierarchy
+│   ├── middlewares/         # auth, validate, ownership, error, cors, logger
+│   ├── models/              # Mongoose schemas
+│   ├── repositories/        # BaseRepository + domain repositories
+│   ├── routes/              # Route tables per resource
+│   ├── scripts/seed.ts      # Idempotent demo-data seeder
+│   ├── services/            # Business logic, incl. calorie strategies
+│   ├── tests/               # node:test suites
+│   └── validators/          # Dependency-free schema validation
+├── client/                  # Frontend — React 18 + Vite + TS
+├── scripts/test.ts          # Custom node:test runner with tap reporter
+├── classDiagram.md
+├── erDiagram.md
+├── sequenceDiagram.md
+├── useCaseDiagram.md
+└── idea.md
+```
+
+## Backend
 
 ### Prerequisites
 
-- Node.js (v18 or higher)
-- MongoDB (Local or Atlas)
-- npm or yarn
+- Node.js 18+ (Node 22 tested)
+- MongoDB (local daemon or Atlas)
 
-### Installation
+### Configuration
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Ronxak/SESD-Project-Milestone-1.git
-   cd SESD-Project-Milestone-1
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Configure Environment Variables:
-   Create a `.env` file in the root directory:
-   ```env
-   PORT=5000
-   MONGO_URI=your_mongodb_connection_string
-   JWT_SECRET=your_super_secret_key
-   ```
+Create `.env` in the repository root:
 
-### Running the Application
-
-```bash
-# Development mode
-npm run dev
+```env
+PORT=5000
+MONGO_URI=mongodb://127.0.0.1:27017/fitness-tracker
+JWT_SECRET=replace-me-with-something-long-and-random
+JWT_EXPIRES_IN=7d
+CORS_ORIGIN=http://localhost:5173
+NODE_ENV=development
 ```
 
----
+The environment loader is typed (`src/config/env.ts`) and fails fast on
+missing values.
 
-## 📖 API Documentation (Summary)
+### Install, build, run
 
-### Authentication
+```bash
+npm install          # install backend dependencies
+npm run dev          # start the API with ts-node-dev (HMR)
+npm run build        # emit dist/ via tsc
+npm start            # run the compiled build
+npm run seed         # populate MongoDB with a demo user + data
+npm test             # run the node:test suite
+```
 
-- `POST /api/auth/register` — Create a new account
-- `POST /api/auth/login` — Sign in and receive JWT
+The seed script is idempotent for the demo user; it deletes any existing
+records owned by `demo@fitness.local` before reinserting. Other users' data
+is untouched. After seeding you can sign in with:
 
-### Workout Programs
+```
+email:    demo@fitness.local
+password: Password123
+```
 
-- `POST /api/programs` — Create a new program
-- `GET /api/programs` — Retrieve user's programs
-- `DELETE /api/programs/:id` — Remove a program
+### API
 
-### Goals
+All `/api/*` routes except `auth/*` require `Authorization: Bearer <token>`.
 
-- `POST /api/goals` — Set a fitness goal
-- `GET /api/goals` — View all goals
-- `PATCH /api/goals/:id` — Update goal status
+| Method | Path                         | Purpose                           |
+| :----- | :--------------------------- | :-------------------------------- |
+| POST   | `/api/auth/register`         | Create account                    |
+| POST   | `/api/auth/login`            | Exchange credentials for a JWT    |
+| GET    | `/api/programs`              | List the caller's programs        |
+| POST   | `/api/programs`              | Create a program                  |
+| DELETE | `/api/programs/:id`          | Delete a program (owner only)     |
+| GET    | `/api/goals`                 | List the caller's goals           |
+| POST   | `/api/goals`                 | Create a goal for a program       |
+| PATCH  | `/api/goals/:id`             | Update a goal / mark achieved     |
+| DELETE | `/api/goals/:id`             | Delete a goal                     |
+| GET    | `/api/workouts`              | List the caller's sessions        |
+| POST   | `/api/workouts`              | Start a session for a program     |
+| PATCH  | `/api/workouts/:id/end`      | End a session (computes duration) |
+| GET    | `/api/health`                | Liveness probe                    |
 
-### Workout Sessions
+### Tests
 
-- `POST /api/workouts` — Log a training session
-- `GET /api/workouts` — View workout history
+The suite runs on Node's built-in `node:test` via a tiny wrapper at
+`scripts/test.ts` that uses the programmatic `run()` API with a tap reporter.
+This sidesteps the Node 22 `ts-node/esm` loader issue when invoking
+`node --test` directly.
 
----
+What's covered:
 
-## 🛡 Disclaimer
+- `schema.test.ts` — the dependency-free validator (required, coercion,
+  min/max, enums, ObjectId shape).
+- `calorie.test.ts` — `CalorieStrategyFactory` returns the right strategy per
+  category and MET math is correct.
+- `errors.test.ts` — the `AppError` hierarchy maps to the right status codes.
+- `auth.service.test.ts` — register/login against a mocked user repository,
+  verifying JWT payload with `jsonwebtoken.verify`.
+- `_smoke.test.ts` — sanity check for the runner itself.
 
-This project is developed as part of the SESD Project Milestone-1. It focuses on demonstrating backend engineering proficiency, including architectural patterns, secure API design, and structured data modeling.
+```bash
+npm test
+# tests 25
+# pass  25
+# fail  0
+```
+
+## Frontend
+
+The SPA lives in `client/` — React 18 + Vite 5 + TypeScript (strict). See
+[`client/README.md`](client/README.md) for the frontend-specific setup
+instructions.
+
+In short:
+
+```bash
+cd client
+npm install
+npm run dev     # http://localhost:5173
+```
+
+The Vite dev server proxies `/api/*` to `http://localhost:5000`, so there's
+no CORS setup needed during local development.
+
+Pages: **Login**, **Register**, **Programs**, **Goals**, **Workouts**.
+Auth is stored in `localStorage` and attached as `Authorization: Bearer
+<token>` to every outgoing request; token validity is checked server-side.
+
+## Diagrams
+
+The `.md` diagrams at the root render with any Mermaid-aware viewer
+(GitHub, VS Code Mermaid plugin, Typora, etc.):
+
+- [`useCaseDiagram.md`](useCaseDiagram.md) — actors and high-level use cases.
+- [`sequenceDiagram.md`](sequenceDiagram.md) — request flows for the key
+  endpoints.
+- [`classDiagram.md`](classDiagram.md) — domain classes and their
+  relationships.
+- [`erDiagram.md`](erDiagram.md) — MongoDB collections and references.
+
+## Commit history
+
+Commits are grouped by feature rather than by file. The notable milestones
+on this branch:
+
+1. `feat(frontend): add React + Vite + TypeScript client`
+2. `test(backend): add built-in node:test suite for services and utilities`
+3. `refactor(backend): wire clean architecture through all layers`
+4. `refactor(backend): introduce clean architecture foundation`
+5. `Update README and TODO with project details`
+6. `Initial commit for Fitness Tracker backend`
+
+## Disclaimer
+
+Submitted for the SESD Project Milestone 1. The focus is on demonstrating
+architectural patterns, OOP principles, secure API design, and consistent
+commit hygiene rather than feature breadth.
