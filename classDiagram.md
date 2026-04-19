@@ -2,8 +2,8 @@
 
 ## Overview
 
-This class diagram represents the major domain models, services, and repository layers of the Fitness Tracker System.
-The design follows Clean Architecture principles, ensuring separation between domain models, service layer, and repository layer, and applies core Object-Oriented Programming (OOP) principles.
+This class diagram represents the domain models, service layer, repository layer, and supporting patterns of the Fitness Tracker System.
+The design follows Clean Architecture principles (Controller → Service → Repository → Model) and applies core Object-Oriented Programming (OOP) principles together with four deliberate design patterns: **Singleton**, **Template Method**, **Strategy**, and **Factory**.
 
 ```mermaid
 classDiagram
@@ -15,14 +15,27 @@ classDiagram
         -id: string
         -name: string
         -email: string
-        -passwordHash: string
+        -password: string
         -weight: number
         -height: number
+        -age: number
+        -gender: Gender
+        -fitnessLevel: FitnessLevel
+        -bio: string
+        -weightHistory: WeightEntry[]
+        -isActive: boolean
         -createdAt: Date
         -updatedAt: Date
         +register(): User
         +login(): string
-        +updateProfile(weight: number): void
+        +updateProfile(patch): User
+        +logWeight(kg: number): User
+    }
+
+    class WeightEntry {
+        <<embedded>>
+        -weightKg: number
+        -recordedAt: Date
     }
 
     class WorkoutProgram {
@@ -30,10 +43,10 @@ classDiagram
         -userId: string
         -name: string
         -description: string
+        -category: string
         -createdAt: Date
         -updatedAt: Date
         +create(): WorkoutProgram
-        +update(details): void
         +delete(): void
     }
 
@@ -68,122 +81,171 @@ classDiagram
         +calculateDuration(): number
     }
 
-    class AuthToken {
-        -id: string
-        -userId: string
-        -token: string
-        -createdAt: Date
-        -expiresAt: Date
-        +generate(): string
-        +validate(): boolean
-    }
-
     %% ===== SERVICE LAYER =====
 
     class AuthService {
-        -userRepo: IUserRepository
-        +register(name: string, email: string, password: string): User
-        +login(email: string, password: string): string
-        +validateToken(token: string): boolean
+        -users: UserRepository
+        +register(name, email, password): User
+        +login(email, password): string
+        +validateToken(token): boolean
     }
 
     class ProgramService {
-        -programRepo: IProgramRepository
-        +createProgram(userId: string, name: string): WorkoutProgram
-        +getPrograms(userId: string): WorkoutProgram[]
-        +deleteProgram(programId: string): void
+        -repo: ProgramRepository
+        +createProgram(input): WorkoutProgram
+        +createFromTemplate(userId, key): WorkoutProgram
+        +getPrograms(userId): WorkoutProgram[]
+        +deleteProgram(id, requestingUserId): void
     }
 
     class GoalService {
-        -goalRepo: IGoalRepository
+        -repo: GoalRepository
         +createGoal(data): FitnessGoal
-        +updateGoal(goalId: string, data): FitnessGoal
-        +markAchieved(goalId: string): void
-        +getGoals(userId: string): FitnessGoal[]
+        +markAchieved(goalId): FitnessGoal
+        +getGoals(userId): FitnessGoal[]
+        +deleteGoal(id): void
     }
 
     class WorkoutService {
-        -workoutRepo: IWorkoutRepository
-        +startWorkout(userId: string, programId: string): WorkoutSession
-        +endWorkout(workoutId: string): void
-        +getWorkouts(userId: string): WorkoutSession[]
+        -workouts: WorkoutRepository
+        -programs: ProgramRepository
+        -users: UserRepository
+        +startWorkout(userId, programId): WorkoutSession
+        +endWorkout(workoutId): WorkoutSession
+        +getWorkouts(userId): WorkoutSession[]
     }
 
-    %% ===== REPOSITORY INTERFACES =====
-
-    class IUserRepository {
-        <<interface>>
-        +findById(id: string): User
-        +findByEmail(email: string): User
-        +save(user: User): User
-        +update(user: User): void
+    class ProfileService {
+        -users: UserRepository
+        -workouts: WorkoutRepository
+        -goals: GoalRepository
+        -programs: ProgramRepository
+        +getDashboard(userId): ProfileDashboard
+        +updateProfile(userId, patch): User
+        +logWeight(userId, kg): User
     }
 
-    class IProgramRepository {
-        <<interface>>
-        +findById(id: string): WorkoutProgram
-        +findByUserId(userId: string): WorkoutProgram[]
-        +save(program: WorkoutProgram): WorkoutProgram
-        +delete(id: string): void
+    class RecommendationService {
+        +recommendFor(user, limit): ProgramRecommendation[]
+        +catalog(): ProgramTemplate[]
+        +goals(): string[]
+        +categories(): string[]
     }
 
-    class IGoalRepository {
-        <<interface>>
-        +findById(id: string): FitnessGoal
-        +findByUserId(userId: string): FitnessGoal[]
-        +save(goal: FitnessGoal): FitnessGoal
-        +update(goal: FitnessGoal): void
-        +delete(id: string): void
+    %% ===== DESIGN-PATTERN INFRASTRUCTURE =====
+
+    class Database {
+        <<Singleton>>
+        -instance: Database
+        -connected: boolean
+        +getInstance(): Database
+        +connect(uri): void
+        +disconnect(): void
+        +isConnected(): boolean
     }
 
-    class IWorkoutRepository {
-        <<interface>>
-        +findById(id: string): WorkoutSession
-        +findByUserId(userId: string): WorkoutSession[]
-        +save(session: WorkoutSession): WorkoutSession
-        +update(session: WorkoutSession): void
+    class BaseRepository~T~ {
+        <<abstract / Template Method>>
+        #model: Model~T~
+        -memoryStorage: Map
+        #isConnected(): boolean
+        +create(data): T
+        +findById(id): T
+        +findOne(filter): T
+        +findMany(filter): T[]
+        +updateById(id, patch): T
+        +deleteById(id): boolean
+        +count(filter): number
     }
 
-    class IAuthTokenRepository {
+    class UserRepository
+    class ProgramRepository
+    class GoalRepository
+    class WorkoutRepository
+
+    class CalorieStrategy {
         <<interface>>
-        +save(token: AuthToken): AuthToken
-        +findByUserId(userId: string): AuthToken[]
-        +delete(token: string): void
+        +name: string
+        +estimate(ctx): number
+    }
+
+    class MetBasedStrategy {
+        <<abstract>>
+        #met: number
+        +estimate(ctx): number
+    }
+
+    class StrengthStrategy
+    class CardioStrategy
+    class HiitStrategy
+    class YogaStrategy
+    class GeneralStrategy
+
+    class CalorieStrategyFactory {
+        <<Factory>>
+        -registry: Map
+        +for(category): CalorieStrategy
+        +categories(): string[]
     }
 
     %% ===== RELATIONSHIPS =====
 
+    User "1" *-- "*" WeightEntry : embeds
     User "1" --> "*" WorkoutProgram : creates
     User "1" --> "*" FitnessGoal : tracks
     User "1" --> "*" WorkoutSession : performs
-    User "1" --> "*" AuthToken : has
 
-    WorkoutProgram "1" --> "*" FitnessGoal : contains
+    WorkoutProgram "1" --> "*" FitnessGoal : defines
     WorkoutProgram "1" --> "*" WorkoutSession : logged in
 
-    AuthService --> IUserRepository
-    ProgramService --> IProgramRepository
-    GoalService --> IGoalRepository
-    WorkoutService --> IWorkoutRepository
+    AuthService --> UserRepository
+    ProgramService --> ProgramRepository
+    GoalService --> GoalRepository
+    WorkoutService --> WorkoutRepository
+    WorkoutService --> CalorieStrategyFactory : uses
+    ProfileService --> UserRepository
+    ProfileService --> WorkoutRepository
+    ProfileService --> GoalRepository
+    ProfileService --> ProgramRepository
+    RecommendationService --> CalorieStrategyFactory : uses
+    ProgramService --> RecommendationService : reads templates
+
+    BaseRepository <|-- UserRepository
+    BaseRepository <|-- ProgramRepository
+    BaseRepository <|-- GoalRepository
+    BaseRepository <|-- WorkoutRepository
+
+    CalorieStrategy <|.. MetBasedStrategy
+    MetBasedStrategy <|-- StrengthStrategy
+    MetBasedStrategy <|-- CardioStrategy
+    MetBasedStrategy <|-- HiitStrategy
+    MetBasedStrategy <|-- YogaStrategy
+    MetBasedStrategy <|-- GeneralStrategy
+    CalorieStrategyFactory ..> CalorieStrategy : creates
 ```
 
 ---
 
 ## Design Patterns in the Class Diagram
 
-| Pattern                    | Where Applied                            | Purpose                                       |
-| -------------------------- | ---------------------------------------- | --------------------------------------------- |
-| **Repository Pattern**     | IUserRepository, IGoalRepository, etc.   | Separates database access from business logic |
-| **Service Layer Pattern**  | AuthService, GoalService, ProgramService | Centralizes business logic                    |
-| **Layered Architecture**   | Service → Repository → Model             | Improves scalability and maintainability      |
-| **DTO / Model Separation** | Domain models vs Service logic           | Improves modular design                       |
+| Pattern              | Where Applied                                                 | Purpose                                                                       |
+| -------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| **Singleton**        | `Database`                                                    | Guarantees a single, process-wide MongoDB connection lifecycle.               |
+| **Template Method**  | `BaseRepository<T>` (generic CRUD + Mongo/in-memory fallback) | Reuses a single CRUD skeleton across every concrete repository subclass.      |
+| **Strategy**         | `CalorieStrategy` + `MetBasedStrategy` family                 | Varies the calorie-burn algorithm per workout category without conditionals. |
+| **Factory**          | `CalorieStrategyFactory`                                      | Selects the correct `CalorieStrategy` for a program's category.              |
+| **Repository**       | `UserRepository`, `ProgramRepository`, `GoalRepository`, `WorkoutRepository` | Abstracts persistence from services.                                          |
+| **Service Layer**    | `AuthService`, `ProfileService`, `RecommendationService`, …   | Centralises business logic separate from HTTP concerns.                       |
+| **Layered Architecture** | Controller → Service → Repository → Model                | Enforces separation of concerns across the whole stack.                       |
 
 ## OOP Principles Applied
 
-| Principle                           | Application                                           |
-| ----------------------------------- | ----------------------------------------------------- |
-| **Encapsulation**                   | Models hide internal data and expose methods          |
-| **Abstraction**                     | Repository interfaces hide MongoDB implementation     |
-| **Modularity**                      | Separate services for auth, goals, programs, workouts |
-| **Single Responsibility Principle** | Each class has one clear responsibility               |
-| **Separation of Concerns**          | Controllers, services, repositories separated         |
+| Principle                           | Application                                                                  |
+| ----------------------------------- | ---------------------------------------------------------------------------- |
+| **Encapsulation**                   | Models hide schema internals; services expose intent-named methods.          |
+| **Abstraction**                     | `BaseRepository` and `CalorieStrategy` hide concrete implementations.        |
+| **Inheritance**                     | Concrete repositories extend `BaseRepository`; concrete strategies extend `MetBasedStrategy`. |
+| **Polymorphism**                    | `CalorieStrategyFactory.for(...)` returns any strategy through a common interface. |
+| **Single Responsibility Principle** | One class, one reason to change — e.g. `RecommendationService` only ranks.   |
+| **Open/Closed Principle**           | Add a new workout category by writing a new `Strategy` + registering it.     |
+| **Separation of Concerns**          | Controllers parse HTTP, services decide, repositories persist.               |

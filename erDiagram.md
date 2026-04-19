@@ -2,9 +2,9 @@
 
 ## Overview
 
-This Entity-Relationship diagram represents the database schema for the Fitness Tracker System, a backend-focused application designed to help users manage their workout programs, fitness goals, and session logs securely.
+This Entity-Relationship diagram represents the database schema for the Fitness Tracker System, a backend-focused application that helps users manage their workout programs, fitness goals, and session logs while also exposing a personal dashboard (BMI, streaks) and personalised program recommendations.
 
-The schema models user authentication, program creation, goal tracking, and workout session logging, while enforcing data isolation and structured backend architecture.
+The schema models user authentication, rich profile metadata (age / gender / fitness level / weight history), program creation, goal tracking, and workout session logging — while enforcing data isolation per user.
 
 ---
 
@@ -17,9 +17,19 @@ erDiagram
         varchar password_hash
         float current_weight
         float height_cm
+        integer age
+        varchar gender
+        varchar fitness_level
+        varchar bio
         boolean is_active
         timestamp created_at
         timestamp updated_at
+    }
+
+    WEIGHT_HISTORY {
+        ObjectId user_id FK
+        float weight_kg
+        timestamp recorded_at
     }
 
     WORKOUT_PROGRAMS {
@@ -27,6 +37,7 @@ erDiagram
         ObjectId user_id FK
         varchar name
         text description
+        varchar category
         timestamp created_at
         timestamp updated_at
     }
@@ -51,24 +62,16 @@ erDiagram
         timestamp start_time
         timestamp end_time
         integer duration_minutes
-        float calories_estimated
+        float calories_burned
         timestamp created_at
-    }
-
-    AUTH_TOKENS {
-        ObjectId _id PK
-        ObjectId user_id FK
-        varchar token
-        timestamp created_at
-        timestamp expires_at
     }
 
     %% ===== RELATIONSHIPS =====
 
+    USERS ||--o{ WEIGHT_HISTORY : "records (embedded)"
     USERS ||--o{ WORKOUT_PROGRAMS : "creates"
     USERS ||--o{ FITNESS_GOALS : "tracks"
     USERS ||--o{ WORKOUT_SESSIONS : "performs"
-    USERS ||--o{ AUTH_TOKENS : "has"
 
     WORKOUT_PROGRAMS ||--o{ FITNESS_GOALS : "defines"
     WORKOUT_PROGRAMS ||--o{ WORKOUT_SESSIONS : "logged in"
@@ -76,25 +79,43 @@ erDiagram
 
 ---
 
-## Table Summary
+## Table / Collection Summary
 
-| Table              | Description                                                  | Key Relationships           |
-| ------------------ | ------------------------------------------------------------ | --------------------------- |
-| `USERS`            | Stores all registered users and personal stats (weight, etc) | → Programs, Goals, Sessions |
-| `WORKOUT_PROGRAMS` | Stores programs created by users (e.g., "Leg Day")           | ← User, → Goals, → Sessions |
-| `FITNESS_GOALS`    | Stores specific fitness targets (e.g., "Squat 100kg")        | ← User, ← Program           |
-| `WORKOUT_SESSIONS` | Stores logs of actual time spent working out                 | ← User, ← Program           |
-| `AUTH_TOKENS`      | Stores JWT tokens for authentication                         | ← User                      |
+| Collection          | Description                                                             | Key Relationships                |
+| ------------------- | ----------------------------------------------------------------------- | -------------------------------- |
+| `USERS`             | Registered users + personal stats (weight, height, age, gender, fitness level, bio). | → Programs, Goals, Sessions     |
+| `WEIGHT_HISTORY`    | Embedded subdocument inside `USERS` — chronological weight log used for trend analytics. | ← User (embedded)              |
+| `WORKOUT_PROGRAMS`  | Programs created by users (optionally materialised from a template).    | ← User, → Goals, → Sessions     |
+| `FITNESS_GOALS`     | Specific fitness targets (e.g., "Squat 100kg").                         | ← User, ← Program               |
+| `WORKOUT_SESSIONS`  | Logs of actual time spent working out with calorie burn (MET formula).  | ← User, ← Program               |
+
+> **Note**: In the MongoDB implementation, `AUTH_TOKENS` is **not** a persistent collection. The system uses stateless JWTs signed at login and verified on each request by `authMiddleware`, so tokens do not need to be stored.
+
+---
+
+## Derived / Computed Fields
+
+These are never written to disk — they are assembled on the fly by `ProfileService.getDashboard()`:
+
+| Field                  | Source                                                          |
+| ---------------------- | --------------------------------------------------------------- |
+| `body.bmi`             | `USERS.current_weight / (height_cm / 100)^2`                    |
+| `body.bmiCategory`     | Classification of `bmi` (underweight / healthy / overweight / obese). |
+| `stats.currentStreakDays` | Walk back from today through unique completed-session day keys. |
+| `stats.longestStreakDays` | Longest consecutive-day run across the same day-key set.      |
+| `stats.workoutsThisWeek` / `workoutsThisMonth` | Rolling 7- / 30-day filters on `end_time`. |
+| `goals.achievementRate`   | `achieved / total * 100` rounded to 0.1.                     |
 
 ---
 
 ## Key Indexes
 
-| Table              | Index                   | Purpose                                     |
+| Collection         | Index                   | Purpose                                     |
 | ------------------ | ----------------------- | ------------------------------------------- |
-| `USERS`            | `(email)`               | Fast login and authentication lookup        |
+| `USERS`            | `(email)` UNIQUE        | Fast login and authentication lookup        |
 | `WORKOUT_PROGRAMS` | `(user_id)`             | Fetch programs belonging to a specific user |
 | `FITNESS_GOALS`    | `(user_id, program_id)` | Efficient goal retrieval per program        |
 | `FITNESS_GOALS`    | `(is_achieved)`         | Filter pending vs achieved goals            |
 | `WORKOUT_SESSIONS` | `(user_id)`             | Fetch user workout history                  |
 | `WORKOUT_SESSIONS` | `(program_id)`          | Fetch sessions for a specific program       |
+| `WORKOUT_SESSIONS` | `(user_id, end_time)`   | Streak / windowed analytics on completed sessions. |

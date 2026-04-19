@@ -1,140 +1,184 @@
 # Sequence Diagram — Fitness Tracker System
 
-## Main Flow: User Authentication → Program Creation → Goal Creation → Workout Session
+## Main Flow: Authentication → Program Management → Goal Tracking → Workout Logging → Profile Dashboard → Recommendations
 
-This sequence diagram illustrates the complete lifecycle of a user interacting with the Fitness Tracker System — from registering and logging in, to defining workout programs and fitness goals, and finally tracking a live workout session.
+This sequence diagram captures the complete lifecycle of a user interacting with the Fitness Tracker System — from registering and logging in, to building programs, tracking sessions, reviewing their personal dashboard, and receiving personalised program recommendations.
 
 ```mermaid
 
 sequenceDiagram
     actor U as User
-    participant FE as Frontend (Client Application)
-    participant API as Backend API (Express Server)
-    participant Auth as Auth Service
-    participant ProgS as Program Service
-    participant GoalS as Goal Service
-    participant WorkS as Workout Service
-    participant Repo as Repository Layer
-    participant DB as MongoDB Database
+    participant FE as Frontend (React Client)
+    participant API as Backend API (Express)
+    participant Auth as AuthService
+    participant ProgS as ProgramService
+    participant GoalS as GoalService
+    participant WorkS as WorkoutService
+    participant ProfS as ProfileService
+    participant RecS as RecommendationService
+    participant Cal as CalorieStrategyFactory
+    participant Repo as Repository (BaseRepository)
+    participant DB as MongoDB (or in-memory fallback)
 
-    Note over U, DB: Phase 1 — User Registration and Authentication
+    Note over U, DB: Phase 1 — Registration and Authentication
 
     U ->> FE: Register Account
     FE ->> API: POST /api/auth/register
     API ->> Auth: register(userData)
-    Auth ->> Repo: saveUser(userData)
+    Auth ->> Repo: UserRepository.create(userData)
     Repo ->> DB: INSERT user document
     DB -->> Repo: User created
     Repo -->> Auth: User saved
-    Auth -->> API: Registration success
+    Auth -->> API: 201 Created (user + token)
     API -->> FE: 201 Created
     FE -->> U: Account registered successfully
 
     U ->> FE: Login
     FE ->> API: POST /api/auth/login
-    API ->> Auth: validateUser(credentials)
-    Auth ->> Repo: findUserByEmail(email)
+    API ->> Auth: login(email, password)
+    Auth ->> Repo: UserRepository.findOne({ email })
     Repo ->> DB: SELECT user document
     DB -->> Repo: User found
-    Repo -->> Auth: Return user data
-    Auth ->> Auth: Generate JWT Token
+    Repo -->> Auth: User + password hash
+    Auth ->> Auth: Compare bcrypt + sign JWT
     Auth -->> API: JWT token
-    API -->> FE: Authentication success
+    API -->> FE: 200 OK + token
     FE -->> U: Login successful
 
     Note over U, DB: Phase 2 — Workout Program Management
 
-    U ->> FE: Create Workout Program (e.g., "Strength Training")
+    U ->> FE: Create Workout Program
     FE ->> API: POST /api/programs (JWT)
-    API ->> Auth: Validate JWT
-    Auth -->> API: Token valid
-    API ->> ProgS: createProgram(programData)
-    ProgS ->> Repo: saveProgram(programData)
+    API ->> Auth: authMiddleware(JWT)
+    Auth -->> API: userId
+    API ->> ProgS: createProgram({ userId, name, category })
+    ProgS ->> Repo: ProgramRepository.create(...)
     Repo ->> DB: INSERT program document
     DB -->> Repo: Program created
     Repo -->> ProgS: Program saved
-    ProgS -->> API: Success
+    ProgS -->> API: 201 Created
     API -->> FE: 201 Created
     FE -->> U: Program created successfully
 
-    U ->> FE: View Programs
-    FE ->> API: GET /api/programs (JWT)
-    API ->> Auth: Validate JWT
-    Auth -->> API: Token valid
-    API ->> ProgS: getPrograms(userId)
-    ProgS ->> Repo: findProgramsByUser(userId)
-    Repo ->> DB: SELECT program documents
-    DB -->> Repo: Program list
-    Repo -->> ProgS: Return programs
-    ProgS -->> API: Program list
-    API -->> FE: Programs retrieved
-    FE -->> U: Display workout programs
+    U ->> FE: Adopt Template (e.g. "HIIT Fat Burner")
+    FE ->> API: POST /api/programs/from-template
+    API ->> ProgS: createFromTemplate(userId, key)
+    ProgS ->> ProgS: Look up PROGRAM_TEMPLATES[key]
+    ProgS ->> Repo: ProgramRepository.create(materialised)
+    Repo ->> DB: INSERT program
+    DB -->> Repo: OK
+    Repo -->> ProgS: Program
+    ProgS -->> API: 201 Created
+    API -->> FE: Template adopted
+    FE -->> U: Program added to your list
 
     Note over U, DB: Phase 3 — Goal Setting
 
-    U ->> FE: Set Fitness Goal (e.g., "Deadlift 150kg")
+    U ->> FE: Create Fitness Goal
     FE ->> API: POST /api/goals (JWT)
-    API ->> Auth: Validate JWT
-    Auth -->> API: Token valid
     API ->> GoalS: createGoal(goalData)
-    GoalS ->> Repo: saveGoal(goalData)
-    Repo ->> DB: INSERT goal document
+    GoalS ->> Repo: GoalRepository.create(...)
+    Repo ->> DB: INSERT goal
     DB -->> Repo: Goal created
-    Repo -->> GoalS: Goal saved
-    GoalS -->> API: Success
+    Repo -->> GoalS: OK
+    GoalS -->> API: 201 Created
     API -->> FE: 201 Created
     FE -->> U: Goal set successfully
 
     U ->> FE: Mark Goal as Achieved
     FE ->> API: PUT /api/goals/{id}/achieve (JWT)
-    API ->> Auth: Validate JWT
-    Auth -->> API: Token valid
-    API ->> GoalS: updateGoalStatus(goalId)
-    GoalS ->> Repo: updateGoal(goalId)
-    Repo ->> DB: UPDATE goal document
-    DB -->> Repo: Goal updated
-    Repo -->> GoalS: Success
-    GoalS -->> API: Success
+    API ->> GoalS: markAchieved(goalId)
+    GoalS ->> Repo: GoalRepository.updateById(...)
+    Repo ->> DB: UPDATE goal
+    DB -->> Repo: OK
+    Repo -->> GoalS: Updated goal
+    GoalS -->> API: 200 OK
     API -->> FE: Goal updated
     FE -->> U: Goal marked as achieved!
 
-    Note over U, DB: Phase 4 — Workout Session Logging
+    Note over U, DB: Phase 4 — Workout Session Logging + Calorie Strategy
 
     U ->> FE: Start Workout
     FE ->> API: POST /api/workouts/start (JWT)
-    API ->> Auth: Validate JWT
-    Auth -->> API: Token valid
-    API ->> WorkS: startWorkout(workoutData)
-    WorkS ->> Repo: saveWorkout(workoutData)
-    Repo ->> DB: INSERT workout document
-    DB -->> Repo: Workout started
-    Repo -->> WorkS: Success
-    WorkS -->> API: Workout started
-    API -->> FE: 201 Created
-    FE -->> U: Timer started
+    API ->> WorkS: startWorkout(userId, programId)
+    WorkS ->> Repo: WorkoutRepository.create({ startTime })
+    Repo ->> DB: INSERT session
+    DB -->> Repo: OK
+    Repo -->> WorkS: Session
+    WorkS -->> API: 201 Created
+    API -->> FE: Timer started
 
     U ->> FE: End Workout
-    FE ->> API: PUT /api/workouts/end (JWT)
-    API ->> Auth: Validate JWT
-    Auth -->> API: Token valid
-    API ->> WorkS: endWorkout(workoutId)
-    WorkS ->> Repo: updateWorkout(workoutId)
-    Repo ->> DB: UPDATE workout document (endTime, duration)
-    DB -->> Repo: Workout updated
-    Repo -->> WorkS: Success
-    WorkS -->> API: Workout summary
-    API -->> FE: Workout completed
+    FE ->> API: PUT /api/workouts/{id}/end (JWT)
+    API ->> WorkS: endWorkout(sessionId)
+    WorkS ->> Repo: WorkoutRepository.findById(id)
+    Repo ->> DB: SELECT session + program
+    DB -->> Repo: Session, Program
+    Repo -->> WorkS: Session + Program
+    WorkS ->> Cal: for(program.category)
+    Cal -->> WorkS: CalorieStrategy (Strength / Cardio / HIIT / Yoga / General)
+    WorkS ->> WorkS: strategy.estimate({ duration, weightKg })
+    WorkS ->> Repo: WorkoutRepository.updateById(endTime, duration, calories)
+    Repo ->> DB: UPDATE session
+    DB -->> Repo: OK
+    Repo -->> WorkS: Updated session
+    WorkS -->> API: 200 OK
+    API -->> FE: Session concluded
     FE -->> U: Workout logged successfully
+
+    Note over U, DB: Phase 5 — Profile Dashboard
+
+    U ->> FE: Open Profile
+    FE ->> API: GET /api/profile (JWT)
+    API ->> ProfS: getDashboard(userId)
+    ProfS ->> Repo: UserRepository.findById(userId)
+    Repo ->> DB: SELECT user
+    DB -->> Repo: User
+    ProfS ->> Repo: Workout/Goal/Program repos findByUser(userId)
+    Repo ->> DB: SELECT sessions, goals, programs
+    DB -->> Repo: Collections
+    Repo -->> ProfS: Data
+    ProfS ->> ProfS: Compute BMI, streaks, windowed counts, achievement rate
+    ProfS -->> API: ProfileDashboard JSON
+    API -->> FE: 200 OK
+    FE -->> U: Dashboard rendered (BMI, streak, stats)
+
+    U ->> FE: Log New Weight
+    FE ->> API: POST /api/profile/weight (JWT)
+    API ->> ProfS: logWeight(userId, weightKg)
+    ProfS ->> Repo: UserRepository.updateById(weight, weightHistory)
+    Repo ->> DB: UPDATE user
+    DB -->> Repo: OK
+    Repo -->> ProfS: Updated user
+    ProfS -->> API: 201 Created
+    API -->> FE: Weight logged
+
+    Note over U, DB: Phase 6 — Personalised Recommendations
+
+    U ->> FE: View Recommended Programs
+    FE ->> API: GET /api/profile/recommendations (JWT)
+    API ->> ProfS: getDashboard(userId)
+    ProfS -->> API: Dashboard (user + BMI + level)
+    API ->> RecS: recommendFor(user, limit=6)
+    RecS ->> RecS: Score each template on level, BMI, goal, age
+    RecS ->> Cal: for(template.category)
+    Cal -->> RecS: CalorieStrategy
+    RecS ->> RecS: estimate(duration, weight) → calories preview
+    RecS -->> API: Ranked ProgramRecommendation[] + rationale
+    API -->> FE: 200 OK { recommendations, catalog, meta }
+    FE -->> U: Ranked recommendations with rationale + calorie preview
 ```
 
 ---
 
 ## Flow Summary
 
-| Phase                     | Description                                                                     | Key Patterns Used           |
-| ------------------------- | ------------------------------------------------------------------------------- | --------------------------- |
-| **1. Authentication**     | User registers and logs in with JWT authentication and secure password storage. | Authentication Pattern, JWT |
-| **2. Program Management** | User creates and views workout programs securely.                               | Layered Architecture        |
-| **3. Goal Setting**       | User creates, updates, and completes fitness goals linked to programs.          | Service Layer Pattern       |
-| **4. Workout Logging**    | User starts and ends workout sessions with duration tracking and persistence.   | Repository Pattern          |
-| **5. Data Persistence**   | All health data is securely stored and retrieved from MongoDB.                  | Repository Pattern          |
+| Phase                       | Description                                                                      | Key Patterns Used                                 |
+| --------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------- |
+| **1. Authentication**       | User registers and logs in with JWT + bcrypt.                                    | Service Layer, JWT, Layered Architecture          |
+| **2. Program Management**   | User creates custom programs or adopts curated templates.                        | Layered Architecture, Template catalog            |
+| **3. Goal Setting**         | User creates, updates, and completes goals linked to programs.                   | Service Layer, Repository                         |
+| **4. Workout Logging**      | Sessions start/stop with duration + calories computed per category.              | **Strategy + Factory** (CalorieStrategyFactory)   |
+| **5. Profile Dashboard**    | Aggregate BMI, streaks, windowed workouts, goal rate — computed on demand.       | Service Layer, derived-field pattern              |
+| **6. Recommendations**      | Rank curated templates using a transparent weighted-sum scoring engine.          | Service Layer, Strategy/Factory (calorie preview) |
+| **Cross-cutting**           | Single DB connection for the process lifecycle; in-memory fallback when MongoDB unavailable. | **Singleton (Database)** + **Template Method (BaseRepository)** |
