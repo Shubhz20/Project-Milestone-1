@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { profileApi } from "../api/endpoints";
-import { ProfileDashboard } from "../api/types";
+import { profileApi, workoutsApi } from "../api/endpoints";
+import { ProfileDashboard, WorkoutSession } from "../api/types";
 import { motion } from "framer-motion";
 import { 
   TrendingUp, 
@@ -38,10 +38,21 @@ const COLORS = ["#00d2ff", "#3a7bd5", "#00d2ff", "#3a7bd5", "#00d2ff", "#3a7bd5"
 
 export const Dashboard = () => {
   const [dashboard, setDashboard] = useState<ProfileDashboard | null>(null);
+  const [recentSessions, setRecentSessions] = useState<WorkoutSession[]>([]);
 
   useEffect(() => {
     profileApi.get().then(setDashboard).catch(() => {});
+    workoutsApi.list().then((s) => setRecentSessions(s.slice(0, 4))).catch(() => {});
   }, []);
+
+  const relativeTime = (iso: string) => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.round(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.round(hrs / 24)}d ago`;
+  };
 
   const stats = [
     { label: "Active Workouts", value: dashboard?.stats.activeWorkouts ?? 0, icon: Dumbbell, color: "text-blue-400", bg: "bg-blue-400/10" },
@@ -197,27 +208,37 @@ export const Dashboard = () => {
           </button>
         </div>
         <div className="space-y-4">
-          {[
-            { title: "Push Workout", time: "2 hours ago", energy: "450 kcal", category: "Strength" },
-            { title: "Morning Run", time: "5 hours ago", energy: "620 kcal", category: "Cardio" },
-            { title: "Squat Session", time: "Yesterday", energy: "510 kcal", category: "Strength" },
-          ].map((item, i) => (
-            <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-transparent hover:border-white/10 hover:bg-white/10 transition-all cursor-pointer">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                  <Dumbbell className="text-primary w-5 h-5" />
-                </div>
-                <div>
-                  <p className="font-bold">{item.title}</p>
-                  <p className="text-xs text-white/40">{item.time}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="font-bold text-primary">{item.energy}</p>
-                <p className="text-xs text-white/40 uppercase font-bold tracking-tighter">{item.category}</p>
-              </div>
+          {recentSessions.length === 0 ? (
+            <div className="flex flex-col items-center py-10 text-center space-y-2">
+              <Dumbbell className="w-8 h-8 text-white/10" />
+              <p className="text-white/30 text-sm">No sessions logged yet.<br />Head to Workouts to start tracking.</p>
             </div>
-          ))}
+          ) : (
+            recentSessions.map((session) => (
+              <div key={session._id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-transparent hover:border-white/10 hover:bg-white/10 transition-all">
+                <div className="flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${!session.endTime ? "bg-primary/20 animate-pulse" : "bg-white/5"}`}>
+                    <Dumbbell className={`w-5 h-5 ${!session.endTime ? "text-primary" : "text-white/30"}`} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold">Training Session</p>
+                      {!session.endTime && <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">LIVE</span>}
+                    </div>
+                    <p className="text-xs text-white/40">{relativeTime(session.startTime)}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-primary">
+                    {session.caloriesBurned ? `${session.caloriesBurned} kcal` : session.endTime ? "—" : "In progress"}
+                  </p>
+                  <p className="text-xs text-white/40 uppercase font-bold tracking-tighter">
+                    {session.durationMinutes ? `${session.durationMinutes} min` : "—"}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </motion.div>
     </div>
