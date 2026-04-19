@@ -49,7 +49,7 @@ export class AuthService {
   }
 
   async login({ email, password }: AuthCredentials): Promise<LoginResult> {
-    const user = await this.users.findByEmail(email);
+    const user = await this.users.findByEmail(email.toLowerCase());
     if (!user) throw new UnauthorizedError("Invalid email or password");
 
     const withPassword = await this.users.findByIdWithPassword(user._id.toString());

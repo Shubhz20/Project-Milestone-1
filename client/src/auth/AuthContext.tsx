@@ -17,6 +17,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
+  loginSocial: (provider: string) => Promise<void>;
 }
 
 const AuthCtx = createContext<AuthState | null>(null);
@@ -66,15 +67,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await login(email, password);
   }, [login]);
 
-  const logout = useCallback(() => {
-    tokenStore.clear();
-    persist(null);
+  const loginSocial = useCallback(async (provider: string) => {
+    // Mock a successful social login for demo purposes
+    const mockUser = {
+      id: `social-${Date.now()}`,
+      name: `${provider} Athlete`,
+      email: `${provider.toLowerCase()}@demo.pro`
+    };
+    tokenStore.set(`mock-token-${provider}`);
+    persist(mockUser);
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout }),
-    [user, loading, login, register, logout]
+    () => ({ user, loading, login, register, logout, loginSocial }),
+    [user, loading, login, register, logout, loginSocial]
   );
+ stories
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 };

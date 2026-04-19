@@ -8,8 +8,18 @@ import { toast } from "react-hot-toast";
 export const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login } = useAuth();
+  const { login, loginSocial } = useAuth();
   const navigate = useNavigate();
+
+  const handleSocialLogin = async (provider: string) => {
+    try {
+      await loginSocial(provider);
+      toast.success(`Welcome back via ${provider}!`);
+      navigate("/", { replace: true });
+    } catch (err: any) {
+      toast.error(`Authentication with ${provider} failed`);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,10 +132,16 @@ export const LoginPage = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <button className="h-12 glass-button border-white/5 bg-white/5 hover:bg-white/10 flex items-center justify-center gap-2">
-              <UserIcon className="w-5 h-5" /> Athlete ID
+            <button 
+              onClick={() => handleSocialLogin("GitHub")}
+              className="h-12 glass-button border-white/5 bg-white/5 hover:bg-white/10 flex items-center justify-center gap-2"
+            >
+              <UserIcon className="w-5 h-5" /> GitHub
             </button>
-            <button className="h-12 glass-button border-white/5 bg-white/5 hover:bg-white/10 flex items-center justify-center gap-2">
+            <button 
+              onClick={() => handleSocialLogin("Google")}
+              className="h-12 glass-button border-white/5 bg-white/5 hover:bg-white/10 flex items-center justify-center gap-2"
+            >
               <div className="w-5 h-5 rounded-full border-2 border-primary" /> Google
             </button>
           </div>
