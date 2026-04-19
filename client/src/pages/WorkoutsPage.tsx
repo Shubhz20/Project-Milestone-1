@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { workoutApi } from "../api/workoutApi";
-import { IWorkoutSession } from "../../src/models/WorkoutSession";
+import { useEffect, useState } from "react";
+import { workoutsApi } from "../api/endpoints";
+import { WorkoutSession as IWorkoutSession } from "../api/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, 
@@ -10,9 +10,11 @@ import {
   Timer, 
   ArrowRight,
   TrendingUp,
-  ChevronDown
+  ChevronDown,
+  Calendar
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { cn } from "../api/utils";
 
 export const WorkoutsPage = () => {
   const [workouts, setWorkouts] = useState<IWorkoutSession[]>([]);
@@ -25,7 +27,7 @@ export const WorkoutsPage = () => {
 
   const loadWorkouts = async () => {
     try {
-      const data = await workoutApi.getAll();
+      const data = await workoutsApi.list();
       setWorkouts(data);
     } catch (err) {
       toast.error("Failed to load history");
@@ -36,7 +38,7 @@ export const WorkoutsPage = () => {
 
   const handleStartWorkout = async () => {
     try {
-      await workoutApi.start({ type: workoutType } as any);
+      await workoutsApi.start("default"); // Backend expects programId
       toast.success("Workout session initialized!");
       loadWorkouts();
     } catch (err) {
@@ -46,7 +48,7 @@ export const WorkoutsPage = () => {
 
   const handleEndWorkout = async (id: string) => {
     try {
-      await workoutApi.end(id, { notes: "Completed with high intensity" } as any);
+      await workoutsApi.end(id);
       toast.success("Session achieved!");
       loadWorkouts();
     } catch (err) {

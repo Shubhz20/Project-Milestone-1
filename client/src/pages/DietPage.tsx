@@ -1,12 +1,10 @@
 import { motion } from "framer-motion";
 import { 
-  Utensils, 
   Plus, 
   Trash2, 
   Apple, 
   Coffee, 
   Pizza, 
-  Flame,
   PieChart as PieChartIcon,
   Search
 } from "lucide-react";

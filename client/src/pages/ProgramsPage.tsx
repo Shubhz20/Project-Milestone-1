@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { programApi } from "../api/programApi";
-import { IWorkoutProgram } from "../../src/models/WorkoutProgram";
+import { programsApi } from "../api/endpoints";
+import { Program as IWorkoutProgram } from "../api/types";
 import { motion } from "framer-motion";
 import { 
   Rocket, 
@@ -30,7 +30,7 @@ export const ProgramsPage = () => {
 
   const loadPrograms = async () => {
     try {
-      const data = await programApi.getAll();
+      const data = await programsApi.list();
       setPrograms(data);
     } catch (err) {
       toast.error("Discovery service unavailable");

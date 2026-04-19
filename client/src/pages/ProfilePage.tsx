@@ -4,9 +4,7 @@ import {
   Mail, 
   MapPin, 
   Scale, 
-  Ruler, 
   Trophy, 
-  Target,
   Medal,
   Award,
   Star,
@@ -15,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { cn } from "../api/utils";
 
 export const ProfilePage = () => {
   const { user } = useAuth();

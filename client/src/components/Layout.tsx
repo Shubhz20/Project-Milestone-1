@@ -3,7 +3,6 @@ import { Toaster } from "react-hot-toast";
 import { Sidebar } from "./Sidebar";
 import { Navbar } from "./Navbar";
 import { useAuth } from "../auth/AuthContext";
-import { cn } from "../api/utils";
 
 export const Layout = () => {
   const { user } = useAuth();

@@ -15,7 +15,7 @@ export const RegisterPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await register({ name, email, password });
+      await register(name, email, password);
       toast.success("Account initialized! Time to grind.");
       navigate("/", { replace: true });
     } catch (err: any) {

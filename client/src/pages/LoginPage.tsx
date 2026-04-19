@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { motion } from "framer-motion";
-import { Dumbbell, Mail, Lock, ArrowRight, Github } from "lucide-react";
+import { Dumbbell, Mail, Lock, ArrowRight, Github as GithubIcon } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 export const LoginPage = () => {
@@ -14,7 +14,7 @@ export const LoginPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login({ email, password });
+      await login(email, password);
       toast.success("Welcome back, athlete!");
       navigate("/", { replace: true });
     } catch (err: any) {
@@ -123,7 +123,7 @@ export const LoginPage = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <button className="h-12 glass-button border-white/5 bg-white/5 hover:bg-white/10 flex items-center justify-center gap-2">
-              <Github className="w-5 h-5" /> GitHub
+              <GithubIcon className="w-5 h-5" /> GitHub
             </button>
             <button className="h-12 glass-button border-white/5 bg-white/5 hover:bg-white/10 flex items-center justify-center gap-2">
               <div className="w-5 h-5 rounded-full border-2 border-primary" /> Google

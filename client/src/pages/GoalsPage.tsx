@@ -1,13 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { goalApi } from "../api/goalApi";
-import { IFitnessGoal } from "../../src/models/FitnessGoal";
+import { useEffect, useState } from "react";
+import { goalsApi } from "../api/endpoints";
+import { Goal as IFitnessGoal } from "../api/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, 
   Target, 
-  Flag, 
   TrendingUp, 
-  CheckCircle2, 
   X, 
   Trophy,
   ArrowRight
@@ -26,7 +24,7 @@ export const GoalsPage = () => {
 
   const loadGoals = async () => {
     try {
-      const data = await goalApi.getAll();
+      const data = await goalsApi.list();
       setGoals(data);
     } catch (err) {
       toast.error("Failed to load goals");
@@ -38,7 +36,7 @@ export const GoalsPage = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await goalApi.create(newGoal as any);
+      await goalsApi.create({ ...newGoal, programId: "default" });
       toast.success("Goal set! Time to focus.");
       setIsModalOpen(false);
       loadGoals();
@@ -47,12 +45,12 @@ export const GoalsPage = () => {
     }
   };
 
-  const handleUpdateProgress = async (id: string, current: number) => {
+  const handleAchieve = async (id: string) => {
     try {
-      await goalApi.updateProgress(id, current + 5);
+      await goalsApi.markAchieved(id);
       loadGoals();
     } catch (err) {
-      toast.error("Failed to update");
+      toast.error("Failed to update status");
     }
   };
 
@@ -124,10 +122,10 @@ export const GoalsPage = () => {
 
                   <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
                     <button 
-                      onClick={() => handleUpdateProgress(goal._id.toString(), goal.currentValue)}
+                      onClick={() => handleAchieve(goal._id.toString())}
                       className="text-white/50 hover:text-primary transition-all flex items-center gap-2 text-sm font-bold"
                     >
-                      <TrendingUp className="w-4 h-4" /> Log Progress
+                      <TrendingUp className="w-4 h-4" /> Finalize Goal
                     </button>
                     {progress === 100 && (
                       <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
