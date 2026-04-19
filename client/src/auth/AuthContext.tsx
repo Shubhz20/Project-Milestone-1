@@ -78,11 +78,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     persist(mockUser);
   }, []);
 
+  const logout = useCallback(() => {
+    tokenStore.clear();
+    persist(null);
+  }, []);
+
   const value = useMemo(
     () => ({ user, loading, login, register, logout, loginSocial }),
     [user, loading, login, register, logout, loginSocial]
   );
- stories
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 };
