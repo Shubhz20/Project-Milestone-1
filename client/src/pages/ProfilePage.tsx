@@ -1,4 +1,7 @@
 import { motion } from "framer-motion";
+import { useEffect, useState, useMemo } from "react";
+import { profileApi } from "../api/endpoints";
+import { ProfileDashboard } from "../api/types";
 import { 
   User as UserIcon, 
   Mail, 
@@ -9,9 +12,9 @@ import {
   Award,
   Star,
   Camera,
-  Heart
+  Heart,
+  Activity
 } from "lucide-react";
-import { useState, useMemo } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { cn } from "../api/utils";
 
@@ -19,6 +22,11 @@ export const ProfilePage = () => {
   const { user } = useAuth();
   const [weight, setWeight] = useState(75);
   const [height, setHeight] = useState(175);
+  const [dash, setDash] = useState<ProfileDashboard | null>(null);
+
+  useEffect(() => {
+    profileApi.get().then(setDash).catch(() => {});
+  }, []);
 
   const bmi = useMemo(() => {
     const heightInMeters = height / 100;
@@ -34,11 +42,11 @@ export const ProfilePage = () => {
   }, [bmi]);
 
   const achievements = [
-    { title: "Early Bird", desc: "5 Workouts before 7 AM", icon: Star, color: "text-yellow-400", earned: true },
-    { title: "Iron lungs", desc: "10km Monthly run", icon: Heart, color: "text-red-400", earned: true },
-    { title: "Goal Crusher", desc: "Complete 10 goals", icon: Trophy, color: "text-primary", earned: true },
-    { title: "Powerlifter", desc: "200kg Squat", icon: Award, color: "text-blue-400", earned: false },
-    { title: "Commando", desc: "30-day streak", icon: Medal, color: "text-purple-400", earned: false },
+    { title: "First Steps", desc: "Log your first workout", icon: Activity, color: "text-blue-400", earned: (dash?.stats.totalWorkouts ?? 0) > 0 },
+    { title: "Goal Crusher", desc: "Achieve a fitness goal", icon: Trophy, color: "text-primary", earned: (dash?.goals.achieved ?? 0) > 0 },
+    { title: "Calorie Burner", desc: "Burn over 1000 kcal", icon: Heart, color: "text-red-400", earned: (dash?.stats.totalCaloriesBurned ?? 0) > 1000 },
+    { title: "Consistency", desc: "Reach a 3-day streak", icon: Star, color: "text-yellow-400", earned: (dash?.stats.currentStreakDays ?? 0) >= 3 },
+    { title: "Commando", desc: "30-day streak", icon: Medal, color: "text-purple-400", earned: (dash?.stats.currentStreakDays ?? 0) >= 30 },
   ];
 
   if (!user) return null;
@@ -156,11 +164,14 @@ export const ProfilePage = () => {
 
           <div className="mt-8 p-6 rounded-2xl bg-gradient-to-r from-primary/10 to-transparent border border-primary/20">
             <div className="flex items-center justify-between mb-2">
-              <h4 className="font-bold text-sm">Elite Status Progress</h4>
-              <p className="text-xs text-primary font-bold">85%</p>
+              <h4 className="font-bold text-sm">Gamification Score</h4>
+              <p className="text-xs text-primary font-bold">{Math.min(100, (dash?.stats.totalWorkouts ?? 0) * 10)}%</p>
             </div>
             <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden">
-              <div className="w-[85%] h-full bg-gradient-to-r from-primary to-primary-dark" />
+              <div 
+                className="h-full bg-gradient-to-r from-primary to-primary-dark transition-all" 
+                style={{ width: `${Math.min(100, (dash?.stats.totalWorkouts ?? 0) * 10)}%` }}
+              />
             </div>
           </div>
         </motion.div>

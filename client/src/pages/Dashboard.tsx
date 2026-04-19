@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import { profileApi } from "../api/endpoints";
+import { ProfileDashboard } from "../api/types";
 import { motion } from "framer-motion";
 import { 
   TrendingUp, 
@@ -34,6 +37,19 @@ const data = [
 const COLORS = ["#00d2ff", "#3a7bd5", "#00d2ff", "#3a7bd5", "#00d2ff", "#3a7bd5", "#00d2ff"];
 
 export const Dashboard = () => {
+  const [dashboard, setDashboard] = useState<ProfileDashboard | null>(null);
+
+  useEffect(() => {
+    profileApi.get().then(setDashboard).catch(() => {});
+  }, []);
+
+  const stats = [
+    { label: "Active Workouts", value: dashboard?.stats.activeWorkouts ?? 0, icon: Dumbbell, color: "text-blue-400", bg: "bg-blue-400/10" },
+    { label: "Calories Burned", value: dashboard?.stats.totalCaloriesBurned ?? 0, icon: Flame, color: "text-orange-400", bg: "bg-orange-400/10" },
+    { label: "Goals Met", value: `${dashboard?.goals.achieved ?? 0}/${dashboard?.goals.total ?? 0}`, icon: Target, color: "text-green-400", bg: "bg-green-400/10" },
+    { label: "Current Streak", value: `${dashboard?.stats.currentStreakDays ?? 0} days`, icon: TrendingUp, color: "text-purple-400", bg: "bg-purple-400/10" },
+  ];
+
   return (
     <div className="space-y-8">
       <header>
@@ -49,12 +65,7 @@ export const Dashboard = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { label: "Active Workouts", value: "12", icon: Dumbbell, color: "text-blue-400", bg: "bg-blue-400/10" },
-          { label: "Calories Burned", value: "4,250", icon: Flame, color: "text-orange-400", bg: "bg-orange-400/10" },
-          { label: "Goals Met", value: "8/12", icon: Target, color: "text-green-400", bg: "bg-green-400/10" },
-          { label: "Weekly Progress", value: "+15%", icon: TrendingUp, color: "text-purple-400", bg: "bg-purple-400/10" },
-        ].map((stat, i) => (
+        {stats.map((stat, i) => (
           <motion.div
             key={stat.label}
             initial={{ opacity: 0, y: 20 }}

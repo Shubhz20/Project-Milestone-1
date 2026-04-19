@@ -68,15 +68,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [login]);
 
   const loginSocial = useCallback(async (provider: string) => {
-    // Mock a successful social login for demo purposes
-    const mockUser = {
-      id: `social-${Date.now()}`,
-      name: `${provider} Athlete`,
-      email: `${provider.toLowerCase()}@demo.pro`
-    };
-    tokenStore.set(`mock-token-${provider}`);
-    persist(mockUser);
-  }, []);
+    const email = `${provider.toLowerCase()}@demo.pro`;
+    const password = "DemoSession123!";
+    try {
+      await login(email, password);
+    } catch {
+      await register(`${provider} Athlete`, email, password);
+    }
+  }, [login, register]);
 
   const logout = useCallback(() => {
     tokenStore.clear();

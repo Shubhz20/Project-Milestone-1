@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { goalsApi } from "../api/endpoints";
+import { goalsApi, programsApi } from "../api/endpoints";
 import { Goal as IFitnessGoal } from "../api/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -36,7 +36,16 @@ export const GoalsPage = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await goalsApi.create({ ...newGoal, programId: "default" });
+      let pgId = "";
+      const existingProgs = await programsApi.list();
+      if (existingProgs.length > 0) {
+        pgId = existingProgs[0]._id;
+      } else {
+        const fallback = await programsApi.createFromTemplate("full-body-strength-foundations");
+        pgId = fallback._id;
+      }
+
+      await goalsApi.create({ ...newGoal, programId: pgId });
       toast.success("Goal set! Time to focus.");
       setIsModalOpen(false);
       loadGoals();

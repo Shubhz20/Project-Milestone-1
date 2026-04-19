@@ -20,9 +20,19 @@ export const ProgramsPage = () => {
   const [loading, setLoading] = useState(true);
 
   const featuredPrograms = [
-    { title: "Alpha Protocol", desc: "Intense 8-week transformation for peak performance.", label: "Elite", icon: Zap, color: "text-yellow-400" },
-    { title: "Vortex Cardio", desc: "High-metabolism engine building through interval training.", label: "Beginner", icon: Flame, color: "text-orange-500" },
+    { title: "Alpha Protocol", desc: "Intense 8-week transformation for peak performance.", label: "Elite", icon: Zap, color: "text-yellow-400", templateKey: "full-body-strength-foundations" },
+    { title: "Vortex Cardio", desc: "High-metabolism engine building through interval training.", label: "Beginner", icon: Flame, color: "text-orange-500", templateKey: "hiit-fat-burner" },
   ];
+
+  const handleEnroll = async (templateKey: string) => {
+    try {
+      await programsApi.createFromTemplate(templateKey);
+      toast.success("Successfully enrolled in roadmap!");
+      loadPrograms();
+    } catch (err) {
+      toast.error("Failed to enroll in roadmap.");
+    }
+  };
 
   useEffect(() => {
     loadPrograms();
@@ -56,6 +66,7 @@ export const ProgramsPage = () => {
         {featuredPrograms.map((p, i) => (
           <motion.div
             key={p.title}
+            onClick={() => handleEnroll(p.templateKey)}
             initial={{ opacity: 0, x: i % 2 === 0 ? -30 : 30 }}
             animate={{ opacity: 1, x: 0 }}
             className="group relative h-64 rounded-3xl overflow-hidden glass-card cursor-pointer border-transparent hover:border-primary/50 transition-all shadow-[0_20px_40px_rgba(0,0,0,0.3)]"

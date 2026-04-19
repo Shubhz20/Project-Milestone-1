@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { workoutsApi } from "../api/endpoints";
+import { workoutsApi, programsApi } from "../api/endpoints";
 import { WorkoutSession as IWorkoutSession } from "../api/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -38,11 +38,20 @@ export const WorkoutsPage = () => {
 
   const handleStartWorkout = async () => {
     try {
-      await workoutsApi.start("default"); // Backend expects programId
+      let pgId = "";
+      const existingProgs = await programsApi.list();
+      if (existingProgs.length > 0) {
+        pgId = existingProgs[0]._id;
+      } else {
+        const fallback = await programsApi.createFromTemplate("full-body-strength-foundations");
+        pgId = fallback._id;
+      }
+      
+      await workoutsApi.start(pgId); 
       toast.success("Workout session initialized!");
       loadWorkouts();
     } catch (err) {
-      toast.error("An session is already active");
+      toast.error("An session is already active or a server error occurred");
     }
   };
 
