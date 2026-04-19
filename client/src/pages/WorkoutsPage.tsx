@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { workoutsApi, programsApi } from "../api/endpoints";
 import { WorkoutSession as IWorkoutSession } from "../api/types";
+import { dataCache } from "../api/cache";
+import { useAuth } from "../auth/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, 
@@ -16,8 +18,14 @@ import {
 import { toast } from "react-hot-toast";
 import { cn } from "../api/utils";
 
+const CACHE_KEY = "workouts";
+
 export const WorkoutsPage = () => {
-  const [workouts, setWorkouts] = useState<IWorkoutSession[]>([]);
+  const { user } = useAuth();
+  const [workouts, setWorkouts] = useState<IWorkoutSession[]>(() => {
+    if (user) return dataCache.get<IWorkoutSession[]>(user.id, CACHE_KEY) ?? [];
+    return [];
+  });
   const [loading, setLoading] = useState(true);
   const [workoutType, setWorkoutType] = useState("Strength");
 
@@ -29,8 +37,10 @@ export const WorkoutsPage = () => {
     try {
       const data = await workoutsApi.list();
       setWorkouts(data);
+      if (user) dataCache.set(user.id, CACHE_KEY, data);
     } catch (err) {
-      toast.error("Failed to load history");
+      // If API fails but we have cached data, keep showing it
+      if (workouts.length === 0) toast.error("Failed to load history");
     } finally {
       setLoading(false);
     }
@@ -47,8 +57,12 @@ export const WorkoutsPage = () => {
         pgId = fallback._id;
       }
       
-      await workoutsApi.start(pgId); 
+      const newSession = await workoutsApi.start(pgId); 
       toast.success("Workout session initialized!");
+      // Optimistically add to state & cache
+      const updated = [newSession, ...workouts];
+      setWorkouts(updated);
+      if (user) dataCache.set(user.id, CACHE_KEY, updated);
       loadWorkouts();
     } catch (err) {
       toast.error("An session is already active or a server error occurred");
@@ -57,9 +71,12 @@ export const WorkoutsPage = () => {
 
   const handleEndWorkout = async (id: string) => {
     try {
-      await workoutsApi.end(id);
+      const ended = await workoutsApi.end(id);
+      // Update locally + cache
+      const updated = workouts.map(w => w._id === id ? ended : w);
+      setWorkouts(updated);
+      if (user) dataCache.set(user.id, CACHE_KEY, updated);
       toast.success("Session achieved!");
-      loadWorkouts();
     } catch (err) {
       toast.error("Failed to conclude session");
     }
@@ -93,7 +110,7 @@ export const WorkoutsPage = () => {
         </div>
       </header>
 
-      {loading ? (
+      {loading && workouts.length === 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="glass-card h-48 animate-pulse" />

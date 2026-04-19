@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { profileApi, workoutsApi } from "../api/endpoints";
 import { ProfileDashboard, WorkoutSession } from "../api/types";
+import { dataCache } from "../api/cache";
+import { useAuth } from "../auth/AuthContext";
 import { motion } from "framer-motion";
 import { 
   TrendingUp, 
@@ -36,13 +38,31 @@ const data = [
 
 const COLORS = ["#00d2ff", "#3a7bd5", "#00d2ff", "#3a7bd5", "#00d2ff", "#3a7bd5", "#00d2ff"];
 
+const DASH_CACHE_KEY = "dashboard";
+const SESSIONS_CACHE_KEY = "recentSessions";
+
 export const Dashboard = () => {
-  const [dashboard, setDashboard] = useState<ProfileDashboard | null>(null);
-  const [recentSessions, setRecentSessions] = useState<WorkoutSession[]>([]);
+  const { user } = useAuth();
+  const [dashboard, setDashboard] = useState<ProfileDashboard | null>(() => {
+    if (user) return dataCache.get<ProfileDashboard>(user.id, DASH_CACHE_KEY);
+    return null;
+  });
+  const [recentSessions, setRecentSessions] = useState<WorkoutSession[]>(() => {
+    if (user) return dataCache.get<WorkoutSession[]>(user.id, SESSIONS_CACHE_KEY) ?? [];
+    return [];
+  });
 
   useEffect(() => {
-    profileApi.get().then(setDashboard).catch(() => {});
-    workoutsApi.list().then((s) => setRecentSessions(s.slice(0, 4))).catch(() => {});
+    profileApi.get().then((d) => {
+      setDashboard(d);
+      if (user) dataCache.set(user.id, DASH_CACHE_KEY, d);
+    }).catch(() => {});
+
+    workoutsApi.list().then((s) => {
+      const recent = s.slice(0, 4);
+      setRecentSessions(recent);
+      if (user) dataCache.set(user.id, SESSIONS_CACHE_KEY, recent);
+    }).catch(() => {});
   }, []);
 
   const relativeTime = (iso: string) => {

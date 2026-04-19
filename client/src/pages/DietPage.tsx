@@ -14,8 +14,7 @@ import {
 import { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { toast } from "react-hot-toast";
-
-const STORAGE_KEY = "fitness-tracker.diet";
+import { useAuth } from "../auth/AuthContext";
 
 interface Meal {
   id: string;
@@ -35,33 +34,54 @@ const getMealIcon = (type: string) => {
   return Apple;
 };
 
-const loadFromStorage = (): Meal[] => {
+/** Build a user-scoped localStorage key so different accounts don't share meals. */
+const dietKey = (userId: string) => `fitness-tracker.diet.${userId}`;
+const goalKey = (userId: string) => `fitness-tracker.calorie-goal.${userId}`;
+
+const loadFromStorage = (userId: string): Meal[] => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed: Meal[] = JSON.parse(raw);
-    // Only keep meals logged today
-    const today = new Date().toDateString();
-    return parsed.filter((m) => new Date(m.loggedAt).toDateString() === today);
+    const raw = localStorage.getItem(dietKey(userId));
+    if (!raw) {
+      // Migrate legacy (non-user-scoped) data if present
+      const legacy = localStorage.getItem("fitness-tracker.diet");
+      if (legacy) {
+        localStorage.setItem(dietKey(userId), legacy);
+        localStorage.removeItem("fitness-tracker.diet");
+        return JSON.parse(legacy);
+      }
+      return [];
+    }
+    return JSON.parse(raw) as Meal[];
   } catch {
     return [];
   }
 };
 
 export const DietPage = () => {
-  const [meals, setMeals] = useState<Meal[]>(loadFromStorage);
+  const { user } = useAuth();
+  const userId = user?.id ?? "anonymous";
+
+  const [meals, setMeals] = useState<Meal[]>(() => loadFromStorage(userId));
   const [newName, setNewName] = useState("");
   const [newCal, setNewCal] = useState("");
   const [newProtein, setNewProtein] = useState("");
   const [mealType, setMealType] = useState("Breakfast");
   const [calorieGoal, setCalorieGoal] = useState(() => {
-    return parseInt(localStorage.getItem("fitness-tracker.calorie-goal") || "2400");
+    // Try user-scoped key first, then fall back to legacy key
+    const userGoal = localStorage.getItem(goalKey(userId));
+    if (userGoal) return parseInt(userGoal);
+    const legacy = localStorage.getItem("fitness-tracker.calorie-goal");
+    if (legacy) {
+      localStorage.setItem(goalKey(userId), legacy);
+      return parseInt(legacy);
+    }
+    return 2400;
   });
 
-  // Persist meals to localStorage whenever they change
+  // Persist meals to user-scoped localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(meals));
-  }, [meals]);
+    localStorage.setItem(dietKey(userId), JSON.stringify(meals));
+  }, [meals, userId]);
 
   const totalCals = meals.reduce((acc, curr) => acc + curr.calories, 0);
   const totalProtein = meals.reduce((acc, curr) => acc + (curr.protein || 0), 0);
@@ -313,7 +333,7 @@ export const DietPage = () => {
                   const val = parseInt(e.target.value);
                   if (!isNaN(val) && val > 0) {
                     setCalorieGoal(val);
-                    localStorage.setItem("fitness-tracker.calorie-goal", String(val));
+                    localStorage.setItem(goalKey(userId), String(val));
                     toast.success("Calorie goal updated!");
                   }
                 }}

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { programsApi } from "../api/endpoints";
 import { Program as IWorkoutProgram } from "../api/types";
+import { dataCache } from "../api/cache";
+import { useAuth } from "../auth/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Rocket, 
@@ -15,6 +17,8 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
+const CACHE_KEY = "programs";
+
 const TEMPLATE_CATALOG = [
   { key: "full-body-strength-foundations", name: "Alpha Protocol", label: "Elite", desc: "Compound lifts 3x/week with linear progression. Builds strength fast.", icon: Zap, color: "text-yellow-400" },
   { key: "hiit-fat-burner", name: "Vortex Cardio", label: "Beginner", desc: "Tabata-style HIIT circuits that maximise calorie burn per minute.", icon: Flame, color: "text-orange-500" },
@@ -23,7 +27,11 @@ const TEMPLATE_CATALOG = [
 ];
 
 export const ProgramsPage = () => {
-  const [programs, setPrograms] = useState<IWorkoutProgram[]>([]);
+  const { user } = useAuth();
+  const [programs, setPrograms] = useState<IWorkoutProgram[]>(() => {
+    if (user) return dataCache.get<IWorkoutProgram[]>(user.id, CACHE_KEY) ?? [];
+    return [];
+  });
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -37,8 +45,9 @@ export const ProgramsPage = () => {
     try {
       const data = await programsApi.list();
       setPrograms(data);
+      if (user) dataCache.set(user.id, CACHE_KEY, data);
     } catch {
-      toast.error("Could not load your programs.");
+      if (programs.length === 0) toast.error("Could not load your programs.");
     } finally {
       setLoading(false);
     }
@@ -46,8 +55,11 @@ export const ProgramsPage = () => {
 
   const handleEnroll = async (templateKey: string, name: string) => {
     try {
-      await programsApi.createFromTemplate(templateKey);
+      const created = await programsApi.createFromTemplate(templateKey);
       toast.success(`Enrolled in "${name}"!`);
+      const updated = [...programs, created];
+      setPrograms(updated);
+      if (user) dataCache.set(user.id, CACHE_KEY, updated);
       loadPrograms();
     } catch {
       toast.error("Failed to enroll — you may already be in this program.");
@@ -58,7 +70,9 @@ export const ProgramsPage = () => {
     setDeletingId(id);
     try {
       await programsApi.remove(id);
-      setPrograms((prev) => prev.filter((p) => p._id !== id));
+      const updated = programs.filter((p) => p._id !== id);
+      setPrograms(updated);
+      if (user) dataCache.set(user.id, CACHE_KEY, updated);
       toast.success("Program removed.");
     } catch {
       toast.error("Failed to delete program.");
@@ -123,7 +137,7 @@ export const ProgramsPage = () => {
           <span className="text-xs text-white/40 font-bold">{programs.length} enrolled</span>
         </div>
 
-        {loading ? (
+        {loading && programs.length === 0 ? (
           <div className="space-y-4">
             {[1, 2].map((i) => <div key={i} className="glass-card h-24 animate-pulse" />)}
           </div>

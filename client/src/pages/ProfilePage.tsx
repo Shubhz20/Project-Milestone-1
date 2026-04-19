@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useEffect, useState, useMemo } from "react";
 import { profileApi } from "../api/endpoints";
 import { ProfileDashboard } from "../api/types";
+import { dataCache } from "../api/cache";
 import { 
   User as UserIcon, 
   Mail, 
@@ -17,14 +18,22 @@ import {
 import { useAuth } from "../auth/AuthContext";
 import { cn } from "../api/utils";
 
+const CACHE_KEY = "profile";
+
 export const ProfilePage = () => {
   const { user } = useAuth();
   const [weight, setWeight] = useState(75);
   const [height, setHeight] = useState(175);
-  const [dash, setDash] = useState<ProfileDashboard | null>(null);
+  const [dash, setDash] = useState<ProfileDashboard | null>(() => {
+    if (user) return dataCache.get<ProfileDashboard>(user.id, CACHE_KEY);
+    return null;
+  });
 
   useEffect(() => {
-    profileApi.get().then(setDash).catch(() => {});
+    profileApi.get().then((d) => {
+      setDash(d);
+      if (user) dataCache.set(user.id, CACHE_KEY, d);
+    }).catch(() => {});
   }, []);
 
   const bmi = useMemo(() => {

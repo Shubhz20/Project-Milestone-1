@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { goalsApi, programsApi } from "../api/endpoints";
 import { Goal as IFitnessGoal } from "../api/types";
+import { dataCache } from "../api/cache";
+import { useAuth } from "../auth/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, 
@@ -12,8 +14,14 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
+const CACHE_KEY = "goals";
+
 export const GoalsPage = () => {
-  const [goals, setGoals] = useState<IFitnessGoal[]>([]);
+  const { user } = useAuth();
+  const [goals, setGoals] = useState<IFitnessGoal[]>(() => {
+    if (user) return dataCache.get<IFitnessGoal[]>(user.id, CACHE_KEY) ?? [];
+    return [];
+  });
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newGoal, setNewGoal] = useState({ title: "", targetValue: 0, unit: "kg" });
@@ -26,8 +34,9 @@ export const GoalsPage = () => {
     try {
       const data = await goalsApi.list();
       setGoals(data);
+      if (user) dataCache.set(user.id, CACHE_KEY, data);
     } catch (err) {
-      toast.error("Failed to load goals");
+      if (goals.length === 0) toast.error("Failed to load goals");
     } finally {
       setLoading(false);
     }
@@ -45,9 +54,13 @@ export const GoalsPage = () => {
         pgId = fallback._id;
       }
 
-      await goalsApi.create({ ...newGoal, programId: pgId });
+      const created = await goalsApi.create({ ...newGoal, programId: pgId });
       toast.success("Goal set! Time to focus.");
       setIsModalOpen(false);
+      // Optimistically update state + cache
+      const updated = [...goals, created];
+      setGoals(updated);
+      if (user) dataCache.set(user.id, CACHE_KEY, updated);
       loadGoals();
     } catch (err) {
       toast.error("Failed to create goal");
@@ -56,8 +69,10 @@ export const GoalsPage = () => {
 
   const handleAchieve = async (id: string) => {
     try {
-      await goalsApi.markAchieved(id);
-      loadGoals();
+      const achieved = await goalsApi.markAchieved(id);
+      const updated = goals.map(g => g._id === id ? achieved : g);
+      setGoals(updated);
+      if (user) dataCache.set(user.id, CACHE_KEY, updated);
     } catch (err) {
       toast.error("Failed to update status");
     }
@@ -78,7 +93,7 @@ export const GoalsPage = () => {
         </button>
       </header>
 
-      {loading ? (
+      {loading && goals.length === 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map(i => <div key={i} className="glass-card h-64 animate-pulse" />)}
         </div>
