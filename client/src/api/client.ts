@@ -50,10 +50,14 @@ interface RequestOptions {
   // Endpoints that are intentionally unauthenticated (register, login) bypass
   // token injection.
   auth?: boolean;
+  /** Per-request override; defaults to 12s. */
+  timeoutMs?: number;
 }
 
+const DEFAULT_TIMEOUT_MS = 12_000;
+
 export const request = async <T>(path: string, opts: RequestOptions = {}): Promise<T> => {
-  const { method = "GET", body, auth = true } = opts;
+  const { method = "GET", body, auth = true, timeoutMs = DEFAULT_TIMEOUT_MS } = opts;
   const headers: Record<string, string> = {};
 
   if (body !== undefined) headers["Content-Type"] = "application/json";
@@ -62,11 +66,34 @@ export const request = async <T>(path: string, opts: RequestOptions = {}): Promi
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(path, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  // Hard request deadline so a stuck server never freezes the UI.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    if ((err as DOMException)?.name === "AbortError") {
+      throw new ApiError(
+        "The server took too long to respond. Please try again.",
+        408,
+        "TIMEOUT"
+      );
+    }
+    throw new ApiError(
+      "Network error — please check your connection and try again.",
+      0,
+      "NETWORK"
+    );
+  }
+  clearTimeout(timer);
 
   if (response.status === 204) {
     return undefined as T;

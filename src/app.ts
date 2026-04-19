@@ -4,6 +4,7 @@ import authRoutes from "./routes/auth.routes";
 import programRoutes from "./routes/program.routes";
 import goalRoutes from "./routes/goal.routes";
 import workoutRoutes from "./routes/workout.routes";
+import profileRoutes from "./routes/profile.routes";
 
 import { corsMiddleware } from "./middlewares/cors.middleware";
 import { requestLogger } from "./middlewares/logger.middleware";
@@ -41,6 +42,7 @@ export const createApp = () => {
   });
 
   app.use("/api/auth", authRoutes);
+  app.use("/api/profile", profileRoutes);
   app.use("/api/programs", programRoutes);
   app.use("/api/goals", goalRoutes);
   app.use("/api/workouts", workoutRoutes);

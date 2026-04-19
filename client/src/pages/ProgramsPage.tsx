@@ -1,126 +1,145 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
-import { programsApi } from "../api/endpoints";
-import { PROGRAM_CATEGORIES, Program } from "../api/types";
-import { ErrorBanner } from "../components/ErrorBanner";
+import { useEffect, useState } from "react";
+import { programApi } from "../api/programApi";
+import { IWorkoutProgram } from "../../src/models/WorkoutProgram";
+import { motion } from "framer-motion";
+import { 
+  Rocket, 
+  Map, 
+  ChevronRight, 
+  Flame, 
+  Zap, 
+  Plus, 
+  Calendar,
+  Lock,
+  Star
+} from "lucide-react";
+import { toast } from "react-hot-toast";
 
 export const ProgramsPage = () => {
-  const [programs, setPrograms] = useState<Program[]>([]);
-  const [error, setError] = useState<unknown>(null);
+  const [programs, setPrograms] = useState<IWorkoutProgram[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<typeof PROGRAM_CATEGORIES[number]>("general");
-  const [submitting, setSubmitting] = useState(false);
-
-  const refresh = useCallback(async () => {
-    try {
-      setPrograms(await programsApi.list());
-      setError(null);
-    } catch (err) {
-      setError(err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const featuredPrograms = [
+    { title: "Alpha Protocol", desc: "Intense 8-week transformation for peak performance.", label: "Elite", icon: Zap, color: "text-yellow-400" },
+    { title: "Vortex Cardio", desc: "High-metabolism engine building through interval training.", label: "Beginner", icon: Flame, color: "text-orange-500" },
+  ];
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    loadPrograms();
+  }, []);
 
-  const onCreate = async (e: FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(null);
+  const loadPrograms = async () => {
     try {
-      await programsApi.create({ name, description: description || undefined, category });
-      setName("");
-      setDescription("");
-      setCategory("general");
-      await refresh();
+      const data = await programApi.getAll();
+      setPrograms(data);
     } catch (err) {
-      setError(err);
+      toast.error("Discovery service unavailable");
     } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const onDelete = async (id: string) => {
-    if (!confirm("Delete this program? Associated goals will remain.")) return;
-    try {
-      await programsApi.remove(id);
-      await refresh();
-    } catch (err) {
-      setError(err);
+      setLoading(false);
     }
   };
 
   return (
-    <section className="page">
-      <header className="page-header">
-        <h1>Programs</h1>
-        <p className="muted">Group related workouts into focused programs.</p>
+    <div className="space-y-12">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h1 className="text-4xl font-extrabold tracking-tight">Training <span className="text-primary">Protocols</span></h1>
+          <p className="text-white/40 mt-1">Structured roadmaps for consistent long-term results.</p>
+        </div>
+        <button className="glass-button bg-white/5 border-white/10 hover:bg-white/10 flex items-center gap-2 text-sm">
+          <Map className="w-4 h-4" /> My Roadmaps
+        </button>
       </header>
 
-      <ErrorBanner error={error} />
-
-      <form onSubmit={onCreate} className="form-grid">
-        <label>
-          Name
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Marathon training"
-            required
-            minLength={2}
-            maxLength={100}
-          />
-        </label>
-        <label>
-          Category
-          <select value={category} onChange={(e) => setCategory(e.target.value as any)}>
-            {PROGRAM_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="span-2">
-          Description (optional)
-          <input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            maxLength={500}
-          />
-        </label>
-        <button type="submit" className="btn-primary" disabled={submitting}>
-          {submitting ? "Saving…" : "Add program"}
-        </button>
-      </form>
-
-      {loading ? (
-        <p className="muted">Loading programs…</p>
-      ) : programs.length === 0 ? (
-        <p className="muted">No programs yet — create one above.</p>
-      ) : (
-        <ul className="card-list">
-          {programs.map((p) => (
-            <li key={p._id} className="card">
-              <div>
-                <h3>{p.name}</h3>
-                <p className="muted">
-                  <span className="chip">{p.category}</span>
-                  {p.description && <> · {p.description}</>}
-                </p>
+      {/* Hero Section / Featured */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {featuredPrograms.map((p, i) => (
+          <motion.div
+            key={p.title}
+            initial={{ opacity: 0, x: i % 2 === 0 ? -30 : 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="group relative h-64 rounded-3xl overflow-hidden glass-card cursor-pointer border-transparent hover:border-primary/50 transition-all shadow-[0_20px_40px_rgba(0,0,0,0.3)]"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-transparent opacity-50 group-hover:opacity-100 transition-all" />
+            <div className="absolute top-6 right-6 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-[10px] font-extrabold uppercase tracking-widest border border-white/10">
+              {p.label}
+            </div>
+            
+            <div className="absolute bottom-8 left-8 right-8 space-y-2">
+              <div className="flex items-center gap-3">
+                <p className="text-xs font-bold text-primary uppercase tracking-widest">Featured Roadmap</p>
+                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
               </div>
-              <button className="btn-danger" onClick={() => onDelete(p._id)}>
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+              <h3 className="text-3xl font-extrabold">{p.title}</h3>
+              <p className="text-sm text-white/50 max-w-sm line-clamp-1">{p.desc}</p>
+            </div>
+
+            <div className="absolute bottom-8 right-8 w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0 transition-all duration-300">
+              <ChevronRight className="w-6 h-6 text-primary" />
+            </div>
+          </motion.div>
+        ))}
+      </section>
+
+      {/* Main List */}
+      <section className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <Rocket className="text-primary w-5 h-5" /> Active Directory
+          </h3>
+          <div className="flex gap-2">
+            <button className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all"><Plus className="w-4 h-4" /></button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2].map(i => <div key={i} className="glass-card h-24 animate-pulse uppercase" />)}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {programs.length > 0 ? (
+              programs.map((program, index) => (
+                <motion.div
+                  key={program._id.toString()}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="glass-card flex items-center justify-between p-6 hover:bg-white/5 transition-all group"
+                >
+                  <div className="flex items-center gap-6">
+                    <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center group-hover:border-primary/20 transition-all">
+                      <Star className="w-6 h-6 text-white/20 group-hover:text-primary transition-all" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-lg">{program.name}</h4>
+                      <p className="text-xs text-white/40">{program.description || "Experimental training methodology."}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-8">
+                    <div className="hidden sm:flex flex-col items-end">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-white/50 uppercase tracking-widest">
+                        <Calendar className="w-3 h-3 text-primary" /> Duration
+                      </div>
+                      <p className="font-bold text-sm">4 Weeks</p>
+                    </div>
+                    <button className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary hover:text-bg-dark transition-all">
+                      <Lock className="w-4 h-4" />
+                    </button>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              <div className="glass-card p-16 text-center space-y-4">
+                <p className="text-white/30 text-sm">Deployment ready. Select a roadmap to begin.</p>
+                <div className="w-full h-px bg-white/5 max-w-[200px] mx-auto" />
+                <p className="text-gray-600 uppercase text-[10px] font-bold tracking-[0.3em]">No custom protocols found</p>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    </div>
   );
 };

@@ -12,6 +12,7 @@ const controller = new ProgramController();
 router.use(authMiddleware);
 
 router.post("/", validateRequest(createProgramSchema), controller.create);
+router.post("/from-template", controller.createFromTemplate);
 router.get("/", controller.list);
 
 router.delete(

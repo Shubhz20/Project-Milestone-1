@@ -1,176 +1,196 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { goalsApi, programsApi } from "../api/endpoints";
-import { Goal, Program } from "../api/types";
-import { ErrorBanner } from "../components/ErrorBanner";
+import React, { useEffect, useState } from "react";
+import { goalApi } from "../api/goalApi";
+import { IFitnessGoal } from "../../src/models/FitnessGoal";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Plus, 
+  Target, 
+  Flag, 
+  TrendingUp, 
+  CheckCircle2, 
+  X, 
+  Trophy,
+  ArrowRight
+} from "lucide-react";
+import { toast } from "react-hot-toast";
 
 export const GoalsPage = () => {
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [programs, setPrograms] = useState<Program[]>([]);
-  const [error, setError] = useState<unknown>(null);
+  const [goals, setGoals] = useState<IFitnessGoal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newGoal, setNewGoal] = useState({ title: "", targetValue: 0, unit: "kg" });
 
-  const [programId, setProgramId] = useState("");
-  const [title, setTitle] = useState("");
-  const [targetValue, setTargetValue] = useState("");
-  const [unit, setUnit] = useState("reps");
-  const [submitting, setSubmitting] = useState(false);
+  useEffect(() => {
+    loadGoals();
+  }, []);
 
-  const programById = useMemo(
-    () => Object.fromEntries(programs.map((p) => [p._id, p])),
-    [programs]
-  );
-
-  const refresh = useCallback(async () => {
+  const loadGoals = async () => {
     try {
-      const [g, p] = await Promise.all([goalsApi.list(), programsApi.list()]);
-      setGoals(g);
-      setPrograms(p);
-      if (!programId && p.length > 0) setProgramId(p[0]._id);
-      setError(null);
+      const data = await goalApi.getAll();
+      setGoals(data);
     } catch (err) {
-      setError(err);
+      toast.error("Failed to load goals");
     } finally {
       setLoading(false);
     }
-  }, [programId]);
+  };
 
-  useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const onCreate = async (e: FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!programId) {
-      setError(new Error("Create a program before adding goals."));
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
     try {
-      await goalsApi.create({
-        programId,
-        title,
-        targetValue: Number(targetValue),
-        unit,
-      });
-      setTitle("");
-      setTargetValue("");
-      await refresh();
+      await goalApi.create(newGoal as any);
+      toast.success("Goal set! Time to focus.");
+      setIsModalOpen(false);
+      loadGoals();
     } catch (err) {
-      setError(err);
-    } finally {
-      setSubmitting(false);
+      toast.error("Failed to create goal");
     }
   };
 
-  const onAchieve = async (id: string) => {
+  const handleUpdateProgress = async (id: string, current: number) => {
     try {
-      await goalsApi.markAchieved(id);
-      await refresh();
+      await goalApi.updateProgress(id, current + 5);
+      loadGoals();
     } catch (err) {
-      setError(err);
-    }
-  };
-
-  const onDelete = async (id: string) => {
-    if (!confirm("Delete this goal?")) return;
-    try {
-      await goalsApi.remove(id);
-      await refresh();
-    } catch (err) {
-      setError(err);
+      toast.error("Failed to update");
     }
   };
 
   return (
-    <section className="page">
-      <header className="page-header">
-        <h1>Goals</h1>
-        <p className="muted">Set measurable targets inside your programs.</p>
+    <div className="space-y-10">
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-extrabold tracking-tight">Focus <span className="text-primary">Objectives</span></h1>
+          <p className="text-white/40 mt-1">Define your vision. Track your execution.</p>
+        </div>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="glass-button bg-primary text-bg-dark flex items-center gap-2"
+        >
+          <Plus className="w-5 h-5" /> New Objective
+        </button>
       </header>
 
-      <ErrorBanner error={error} />
-
-      <form onSubmit={onCreate} className="form-grid">
-        <label>
-          Program
-          <select
-            value={programId}
-            onChange={(e) => setProgramId(e.target.value)}
-            required
-          >
-            <option value="" disabled>
-              Select a program…
-            </option>
-            {programs.map((p) => (
-              <option key={p._id} value={p._id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Title
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Bench press 80kg"
-            required
-            minLength={2}
-          />
-        </label>
-        <label>
-          Target value
-          <input
-            type="number"
-            value={targetValue}
-            onChange={(e) => setTargetValue(e.target.value)}
-            min={0}
-            required
-          />
-        </label>
-        <label>
-          Unit
-          <input value={unit} onChange={(e) => setUnit(e.target.value)} required />
-        </label>
-        <button type="submit" className="btn-primary" disabled={submitting}>
-          {submitting ? "Saving…" : "Add goal"}
-        </button>
-      </form>
-
       {loading ? (
-        <p className="muted">Loading goals…</p>
-      ) : goals.length === 0 ? (
-        <p className="muted">No goals yet.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map(i => <div key={i} className="glass-card h-64 animate-pulse" />)}
+        </div>
       ) : (
-        <ul className="card-list">
-          {goals.map((g) => (
-            <li key={g._id} className={`card ${g.isAchieved ? "achieved" : ""}`}>
-              <div>
-                <h3>
-                  {g.title}{" "}
-                  {g.isAchieved && <span className="chip chip-success">Achieved</span>}
-                </h3>
-                <p className="muted">
-                  {g.currentValue} / {g.targetValue} {g.unit} ·{" "}
-                  {programById[g.programId]?.name ?? "Unknown program"}
-                </p>
-              </div>
-              <div className="btn-row">
-                {!g.isAchieved && (
-                  <button className="btn-ghost" onClick={() => onAchieve(g._id)}>
-                    Mark achieved
-                  </button>
-                )}
-                <button className="btn-danger" onClick={() => onDelete(g._id)}>
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <AnimatePresence>
+            {goals.map((goal, index) => {
+              const progress = Math.min(100, Math.round((goal.currentValue / goal.targetValue) * 100));
+              return (
+                <motion.div
+                  key={goal._id.toString()}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="glass-card p-8 flex flex-col justify-between group hover:border-primary/30 transition-all"
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center">
+                        <Target className="text-primary w-6 h-6" />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] uppercase font-bold tracking-widest text-white/30">Target</p>
+                        <p className="text-lg font-extrabold">{goal.targetValue} <span className="text-xs text-white/50 font-normal">{goal.unit}</span></p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="text-xl font-bold">{goal.title}</h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="w-2 h-2 rounded-full bg-green-400" />
+                        <span className="text-xs text-white/50 font-bold uppercase tracking-wider">{goal.status}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 space-y-2">
+                      <div className="flex justify-between items-end">
+                        <p className="text-xs font-bold text-white/30">Progress</p>
+                        <p className="text-sm font-bold text-primary">{progress}%</p>
+                      </div>
+                      <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progress}%` }}
+                          className="h-full bg-gradient-to-r from-primary to-primary-dark" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
+                    <button 
+                      onClick={() => handleUpdateProgress(goal._id.toString(), goal.currentValue)}
+                      className="text-white/50 hover:text-primary transition-all flex items-center gap-2 text-sm font-bold"
+                    >
+                      <TrendingUp className="w-4 h-4" /> Log Progress
+                    </button>
+                    {progress === 100 && (
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                        <Trophy className="w-4 h-4" />
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
       )}
-    </section>
+
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-bg-dark/80 backdrop-blur-md">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="glass-card max-w-md w-full p-8 space-y-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] border-white/20"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-2xl font-bold">New <span className="text-primary">Objective</span></h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-white/50 hover:text-white transition-all">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreate} className="space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-white/50 pl-1">Objective Title</label>
+                  <input
+                    type="text" required className="glass-input w-full h-12"
+                    placeholder="e.g. Weight Loss Goal" value={newGoal.title}
+                    onChange={e => setNewGoal({ ...newGoal, title: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-white/50 pl-1">Target</label>
+                    <input
+                      type="number" required className="glass-input w-full h-12"
+                      value={newGoal.targetValue} onChange={e => setNewGoal({ ...newGoal, targetValue: parseInt(e.target.value) })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-white/50 pl-1">Unit</label>
+                    <input
+                      type="text" required className="glass-input w-full h-12"
+                      value={newGoal.unit} onChange={e => setNewGoal({ ...newGoal, unit: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <button type="submit" className="w-full h-12 glass-button bg-primary text-bg-dark font-bold flex items-center justify-center gap-2 group">
+                Commence Goal <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-all" />
+              </button>
+            </form>
+          </motion.div>
+        </div>
+      )}
+    </div>
   );
 };

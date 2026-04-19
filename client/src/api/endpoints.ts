@@ -3,6 +3,9 @@ import {
   Goal,
   LoginResponse,
   Program,
+  ProfileDashboard,
+  ProfileUser,
+  RecommendationsResponse,
   User,
   WorkoutSession,
 } from "./types";
@@ -28,8 +31,26 @@ export const programsApi = {
   list: () => request<Program[]>("/api/programs"),
   create: (data: { name: string; description?: string; category?: string }) =>
     request<Program>("/api/programs", { method: "POST", body: data }),
+  createFromTemplate: (templateKey: string) =>
+    request<Program>("/api/programs/from-template", {
+      method: "POST",
+      body: { templateKey },
+    }),
   remove: (id: string) =>
     request<void>(`/api/programs/${id}`, { method: "DELETE" }),
+};
+
+export const profileApi = {
+  get: () => request<ProfileDashboard>("/api/profile"),
+  update: (patch: Partial<ProfileUser>) =>
+    request<ProfileUser>("/api/profile", { method: "PUT", body: patch }),
+  logWeight: (weightKg: number) =>
+    request<{ weight: number; weightHistory: { weightKg: number; recordedAt: string }[] }>(
+      "/api/profile/weight",
+      { method: "POST", body: { weightKg } }
+    ),
+  recommendations: () =>
+    request<RecommendationsResponse>("/api/profile/recommendations"),
 };
 
 export const goalsApi = {
