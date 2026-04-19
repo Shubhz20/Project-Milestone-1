@@ -18,7 +18,6 @@ router.get("/", controller.list);
 router.delete(
   "/:id",
   validateRequest(idParamSchema, "params"),
-  requireOwnership(WorkoutProgram),
   controller.remove
 );
 

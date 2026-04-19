@@ -23,7 +23,7 @@ export class ProgramController {
   });
 
   remove = asyncHandler(async (req: AuthRequest, res: Response) => {
-    await this.programs.deleteProgram(req.params.id as string);
+    await this.programs.deleteProgram(req.params.id as string, req.userId);
     res.status(204).send();
   });
 

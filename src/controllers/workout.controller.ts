@@ -17,7 +17,7 @@ export class WorkoutController {
   });
 
   end = asyncHandler(async (req: AuthRequest, res: Response) => {
-    const session = await this.workouts.endWorkout(req.params.id as string);
+    const session = await this.workouts.endWorkout(req.params.id as string, req.userId);
     res.json(session);
   });
 

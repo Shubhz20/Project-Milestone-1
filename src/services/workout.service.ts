@@ -45,9 +45,12 @@ export class WorkoutService {
     } as Partial<IWorkoutSession>);
   }
 
-  async endWorkout(id: string): Promise<IWorkoutSession> {
+  async endWorkout(id: string, requestingUserId?: string): Promise<IWorkoutSession> {
     const session = await this.sessions.findById(id);
     if (!session) throw new NotFoundError("Workout session not found");
+    if (requestingUserId && session.userId.toString() !== requestingUserId) {
+      throw new ForbiddenError("You do not have access to this resource");
+    }
     if (session.endTime) throw new BadRequestError("Session has already ended");
 
     const endTime = new Date();

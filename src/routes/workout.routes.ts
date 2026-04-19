@@ -14,12 +14,10 @@ router.use(authMiddleware);
 router.post("/start", validateRequest(startWorkoutSchema), controller.start);
 router.get("/", controller.list);
 
-// PATCH /api/workouts/:id/end — ownership check loads & verifies the session
-// before the service runs its duration/calorie calculations.
+// PATCH /api/workouts/:id/end — ownership verified in the service via userId
 router.patch(
   "/:id/end",
   validateRequest(idParamSchema, "params"),
-  requireOwnership(WorkoutSession),
   controller.end
 );
 
@@ -27,7 +25,6 @@ router.patch(
 router.put(
   "/end/:id",
   validateRequest(idParamSchema, "params"),
-  requireOwnership(WorkoutSession),
   controller.end
 );
 

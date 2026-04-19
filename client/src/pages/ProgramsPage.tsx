@@ -1,51 +1,70 @@
 import { useEffect, useState } from "react";
 import { programsApi } from "../api/endpoints";
 import { Program as IWorkoutProgram } from "../api/types";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Rocket, 
-  Map, 
   ChevronRight, 
   Flame, 
   Zap, 
   Plus, 
   Calendar,
-  Lock,
-  Star
+  Trash2,
+  CheckCircle2,
+  X
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+
+const TEMPLATE_CATALOG = [
+  { key: "full-body-strength-foundations", name: "Alpha Protocol", label: "Elite", desc: "Compound lifts 3x/week with linear progression. Builds strength fast.", icon: Zap, color: "text-yellow-400" },
+  { key: "hiit-fat-burner", name: "Vortex Cardio", label: "Beginner", desc: "Tabata-style HIIT circuits that maximise calorie burn per minute.", icon: Flame, color: "text-orange-500" },
+  { key: "couch-to-5k", name: "Couch to 5K", label: "Beginner", desc: "9-week cardio progression from walking to a 5k run.", icon: Rocket, color: "text-blue-400" },
+  { key: "yoga-mobility-flow", name: "Yoga Flow", label: "Flexible", desc: "Vinyasa flows for joint mobility, breath, and active recovery.", icon: CheckCircle2, color: "text-green-400" },
+];
 
 export const ProgramsPage = () => {
   const [programs, setPrograms] = useState<IWorkoutProgram[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const featuredPrograms = [
-    { title: "Alpha Protocol", desc: "Intense 8-week transformation for peak performance.", label: "Elite", icon: Zap, color: "text-yellow-400", templateKey: "full-body-strength-foundations" },
-    { title: "Vortex Cardio", desc: "High-metabolism engine building through interval training.", label: "Beginner", icon: Flame, color: "text-orange-500", templateKey: "hiit-fat-burner" },
-  ];
-
-  const handleEnroll = async (templateKey: string) => {
-    try {
-      await programsApi.createFromTemplate(templateKey);
-      toast.success("Successfully enrolled in roadmap!");
-      loadPrograms();
-    } catch (err) {
-      toast.error("Failed to enroll in roadmap.");
-    }
-  };
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     loadPrograms();
   }, []);
 
   const loadPrograms = async () => {
+    setLoading(true);
     try {
       const data = await programsApi.list();
       setPrograms(data);
-    } catch (err) {
-      toast.error("Discovery service unavailable");
+    } catch {
+      toast.error("Could not load your programs.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEnroll = async (templateKey: string, name: string) => {
+    try {
+      await programsApi.createFromTemplate(templateKey);
+      toast.success(`Enrolled in "${name}"!`);
+      loadPrograms();
+    } catch {
+      toast.error("Failed to enroll — you may already be in this program.");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await programsApi.remove(id);
+      setPrograms((prev) => prev.filter((p) => p._id !== id));
+      toast.success("Program removed.");
+    } catch {
+      toast.error("Failed to delete program.");
+    } finally {
+      setDeletingId(null);
+      setConfirmDeleteId(null);
     }
   };
 
@@ -56,99 +75,126 @@ export const ProgramsPage = () => {
           <h1 className="text-4xl font-extrabold tracking-tight">Training <span className="text-primary">Protocols</span></h1>
           <p className="text-white/40 mt-1">Structured roadmaps for consistent long-term results.</p>
         </div>
-        <button className="glass-button bg-white/5 border-white/10 hover:bg-white/10 flex items-center gap-2 text-sm">
-          <Map className="w-4 h-4" /> My Roadmaps
-        </button>
       </header>
 
-      {/* Hero Section / Featured */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {featuredPrograms.map((p, i) => (
-          <motion.div
-            key={p.title}
-            onClick={() => handleEnroll(p.templateKey)}
-            initial={{ opacity: 0, x: i % 2 === 0 ? -30 : 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="group relative h-64 rounded-3xl overflow-hidden glass-card cursor-pointer border-transparent hover:border-primary/50 transition-all shadow-[0_20px_40px_rgba(0,0,0,0.3)]"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-transparent opacity-50 group-hover:opacity-100 transition-all" />
-            <div className="absolute top-6 right-6 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-[10px] font-extrabold uppercase tracking-widest border border-white/10">
-              {p.label}
-            </div>
-            
-            <div className="absolute bottom-8 left-8 right-8 space-y-2">
-              <div className="flex items-center gap-3">
-                <p className="text-xs font-bold text-primary uppercase tracking-widest">Featured Roadmap</p>
-                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+      {/* Template Catalog */}
+      <section className="space-y-4">
+        <h3 className="text-xl font-bold flex items-center gap-2">
+          <Rocket className="text-primary w-5 h-5" /> Enroll in a Roadmap
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {TEMPLATE_CATALOG.map((p, i) => (
+            <motion.div
+              key={p.key}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.08 }}
+              className="group relative rounded-3xl overflow-hidden glass-card cursor-pointer border-transparent hover:border-primary/40 transition-all p-8 flex flex-col justify-between gap-4"
+            >
+              <div className="flex items-start justify-between">
+                <div className={`w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center`}>
+                  <p.icon className={`w-6 h-6 ${p.color}`} />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-white/10 border border-white/10">
+                  {p.label}
+                </span>
               </div>
-              <h3 className="text-3xl font-extrabold">{p.title}</h3>
-              <p className="text-sm text-white/50 max-w-sm line-clamp-1">{p.desc}</p>
-            </div>
-
-            <div className="absolute bottom-8 right-8 w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0 transition-all duration-300">
-              <ChevronRight className="w-6 h-6 text-primary" />
-            </div>
-          </motion.div>
-        ))}
+              <div>
+                <h3 className="text-2xl font-extrabold">{p.name}</h3>
+                <p className="text-sm text-white/50 mt-1 line-clamp-2">{p.desc}</p>
+              </div>
+              <button
+                onClick={() => handleEnroll(p.key, p.name)}
+                className="w-full glass-button bg-white/5 hover:bg-primary hover:text-bg-dark border-white/10 flex items-center justify-center gap-2 transition-all font-bold mt-2"
+              >
+                <Plus className="w-4 h-4" /> Enroll Now <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </motion.div>
+          ))}
+        </div>
       </section>
 
-      {/* Main List */}
-      <section className="space-y-6">
+      {/* Active Programs */}
+      <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold flex items-center gap-2">
-            <Rocket className="text-primary w-5 h-5" /> Active Directory
+            <CheckCircle2 className="text-green-400 w-5 h-5" /> My Active Programs
           </h3>
-          <div className="flex gap-2">
-            <button className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all"><Plus className="w-4 h-4" /></button>
-          </div>
+          <span className="text-xs text-white/40 font-bold">{programs.length} enrolled</span>
         </div>
 
         {loading ? (
           <div className="space-y-4">
-            {[1, 2].map(i => <div key={i} className="glass-card h-24 animate-pulse uppercase" />)}
+            {[1, 2].map((i) => <div key={i} className="glass-card h-24 animate-pulse" />)}
+          </div>
+        ) : programs.length === 0 ? (
+          <div className="glass-card p-16 text-center space-y-3">
+            <div className="w-16 h-16 mx-auto rounded-full bg-white/5 flex items-center justify-center">
+              <Rocket className="w-8 h-8 text-white/20" />
+            </div>
+            <h4 className="font-bold text-lg">No programs yet</h4>
+            <p className="text-white/40 text-sm max-w-sm mx-auto">Enroll in a roadmap above to get started on your fitness journey.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {programs.length > 0 ? (
-              programs.map((program, index) => (
+          <AnimatePresence>
+            <div className="space-y-4">
+              {programs.map((program, index) => (
                 <motion.div
                   key={program._id.toString()}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
                   transition={{ delay: index * 0.05 }}
-                  className="glass-card flex items-center justify-between p-6 hover:bg-white/5 transition-all group"
+                  className="glass-card flex items-center justify-between p-6 hover:bg-white/5 transition-all group border border-transparent hover:border-white/10"
                 >
-                  <div className="flex items-center gap-6">
-                    <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center group-hover:border-primary/20 transition-all">
-                      <Star className="w-6 h-6 text-white/20 group-hover:text-primary transition-all" />
+                  <div className="flex items-center gap-5">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                      <CheckCircle2 className="w-6 h-6 text-primary" />
                     </div>
                     <div>
                       <h4 className="font-bold text-lg">{program.name}</h4>
-                      <p className="text-xs text-white/40">{program.description || "Experimental training methodology."}</p>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-white/40 font-medium">
+                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-primary" /> {new Date(program.createdAt).toLocaleDateString()}</span>
+                        <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/5 capitalize">{program.category}</span>
+                      </div>
+                      {program.description && (
+                        <p className="text-xs text-white/30 mt-1 max-w-sm line-clamp-1">{program.description}</p>
+                      )}
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-8">
-                    <div className="hidden sm:flex flex-col items-end">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-white/50 uppercase tracking-widest">
-                        <Calendar className="w-3 h-3 text-primary" /> Duration
+
+                  <div className="flex items-center gap-3">
+                    {confirmDeleteId === program._id.toString() ? (
+                      <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+                        <p className="text-xs text-red-400 font-bold">Delete?</p>
+                        <button
+                          onClick={() => handleDelete(program._id.toString())}
+                          disabled={deletingId === program._id.toString()}
+                          className="text-xs font-bold text-red-400 hover:text-red-300 transition-colors"
+                        >
+                          {deletingId === program._id.toString() ? "..." : "Yes"}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="text-white/40 hover:text-white transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
                       </div>
-                      <p className="font-bold text-sm">4 Weeks</p>
-                    </div>
-                    <button className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary hover:text-bg-dark transition-all">
-                      <Lock className="w-4 h-4" />
-                    </button>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteId(program._id.toString())}
+                        className="w-10 h-10 rounded-xl bg-red-500/5 border border-red-500/10 flex items-center justify-center text-red-400/50 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all opacity-0 group-hover:opacity-100"
+                        title="Delete program"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </motion.div>
-              ))
-            ) : (
-              <div className="glass-card p-16 text-center space-y-4">
-                <p className="text-white/30 text-sm">Deployment ready. Select a roadmap to begin.</p>
-                <div className="w-full h-px bg-white/5 max-w-[200px] mx-auto" />
-                <p className="text-gray-600 uppercase text-[10px] font-bold tracking-[0.3em]">No custom protocols found</p>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          </AnimatePresence>
         )}
       </section>
     </div>

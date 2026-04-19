@@ -1,6 +1,6 @@
 import { ProgramRepository } from "../repositories/program.repository";
 import { IWorkoutProgram } from "../models/WorkoutProgram";
-import { NotFoundError, BadRequestError } from "../errors/AppError";
+import { NotFoundError, BadRequestError, ForbiddenError } from "../errors/AppError";
 import { PROGRAM_TEMPLATES } from "./recommendation.service";
 
 export interface CreateProgramInput {
@@ -40,7 +40,14 @@ export class ProgramService {
     return this.repo.findByUser(userId);
   }
 
-  async deleteProgram(id: string): Promise<void> {
+  async deleteProgram(id: string, requestingUserId?: string): Promise<void> {
+    if (requestingUserId) {
+      const prog = await this.repo.findById(id);
+      if (!prog) throw new NotFoundError("Program not found");
+      if (prog.userId.toString() !== requestingUserId) {
+        throw new ForbiddenError("You do not have access to this resource");
+      }
+    }
     const ok = await this.repo.deleteById(id);
     if (!ok) throw new NotFoundError("Program not found");
   }
