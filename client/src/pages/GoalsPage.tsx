@@ -101,7 +101,7 @@ export const GoalsPage = () => {
                       <h4 className="text-xl font-bold">{goal.title}</h4>
                       <div className="flex items-center gap-2 mt-1">
                         <div className="w-2 h-2 rounded-full bg-green-400" />
-                        <span className="text-xs text-white/50 font-bold uppercase tracking-wider">{goal.status}</span>
+                        <span className="text-xs text-white/50 font-bold uppercase tracking-wider">{goal.isAchieved ? "Achieved" : "In Progress"}</span>
                       </div>
                     </div>
 

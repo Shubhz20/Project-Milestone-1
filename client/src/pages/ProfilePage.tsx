@@ -133,7 +133,7 @@ export const ProfilePage = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {achievements.map((item, i) => (
+            {achievements.map((item) => (
               <div 
                 key={item.title}
                 className={cn(

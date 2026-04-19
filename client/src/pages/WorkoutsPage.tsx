@@ -119,7 +119,7 @@ export const WorkoutsPage = () => {
                       
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="text-xl font-bold capitalize">{workout.type} Session</h4>
+                          <h4 className="text-xl font-bold capitalize">Training Session</h4>
                           {!workout.endTime && <span className="bg-primary/10 text-primary text-[10px] font-bold uppercase py-0.5 px-2 rounded-full tracking-widest">Live Now</span>}
                         </div>
                         <div className="flex items-center gap-4 mt-1 text-sm text-white/40 font-medium">
