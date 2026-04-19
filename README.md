@@ -58,32 +58,19 @@ Routes  →  Controllers  →  Services  →  Repositories  →  Mongoose Models
 
 ## Deployment (Vercel, single project)
 
-The repo is wired so a single Vercel project ships both halves:
+### Mandatory Vercel Configuration
 
-- `api/index.ts` — Vercel serverless adapter that wraps the Express app and
-  warms the Mongoose connection via the `Database` singleton (with an
-  in-memory fallback if the DB is unreachable).
-- `client/` — React + Vite app; its `dist/` output becomes the static site.
-- `vercel.json` — rewrites `/api/*` to the serverless function and every
-  other path to `index.html`, so the SPA owns client-side routing.
+1. **Framework Preset**: In the Vercel project settings, set the Framework Preset to **"Other"**. This allows `vercel.json` to control the build process.
+2. **Environment Variables**: Set the following in **Settings → Environment Variables**:
+   - `MONGO_URI`: Your MongoDB Atlas connection string.
+   - `JWT_SECRET`: A long, random security string.
+   - `JWT_EXPIRES_IN`: `7d`
+   - `CORS_ORIGIN`: Your deployment URL (or `*`).
+   - `NODE_ENV`: `production`.
 
-Vercel picks up these settings automatically from `vercel.json`:
-
-| Setting              | Value                                        |
-| :------------------- | :------------------------------------------- |
-| Install Command      | `npm install`                                |
-| Build Command        | `cd client && npm install && npm run build`  |
-| Output Directory     | `client/dist`                                |
-| Framework Preset     | Other                                        |
-
-### Required Environment Variables (Vercel → Project → Settings → Environment Variables)
-
-- `MONGO_URI` — MongoDB Atlas connection string (local URIs can't be reached
-  from Vercel; use a free-tier Atlas cluster).
-- `JWT_SECRET` — long, random string.
-- `JWT_EXPIRES_IN` — e.g. `7d`.
-- `CORS_ORIGIN` — your deployment URL (or `*` for a demo).
-- `NODE_ENV` — `production`.
+### Build & Routing
+- `api/index.ts` — wraps the Express app with an in-memory fallback.
+- `vercel.json` — handles the full-stack routing and build steps.
 
 After a `git push` the deployment URL will serve:
 
