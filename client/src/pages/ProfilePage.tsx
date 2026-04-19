@@ -8,12 +8,11 @@ import {
   MapPin, 
   Scale, 
   Trophy, 
-  Medal,
-  Award,
   Star,
   Camera,
   Heart,
-  Activity
+  Activity,
+  Medal
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { cn } from "../api/utils";
