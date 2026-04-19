@@ -6,16 +6,19 @@ export class UserRepository extends BaseRepository<IUser> {
     super(User);
   }
 
-  findByEmail(email: string): Promise<IUser | null> {
-    return this.model.findOne({ email: email.toLowerCase() }).exec();
+  async findByEmail(email: string): Promise<IUser | null> {
+    return this.findOne({ email: email.toLowerCase() });
   }
 
   /**
    * Password is `select: false` on the schema, so a normal `findById` will
-   * omit it. This method explicitly opts back in — used only by the auth
-   * service during login.
+   * omit it. This method explicitly opts back in when connected to DB.
+   * In-memory mode always includes all fields.
    */
-  findByIdWithPassword(id: string): Promise<IUser | null> {
-    return this.model.findById(id).select("+password").exec();
+  async findByIdWithPassword(id: string): Promise<IUser | null> {
+    if (this.model.db.readyState === 1) {
+      return this.model.findById(id).select("+password").exec();
+    }
+    return this.findById(id);
   }
 }

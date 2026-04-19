@@ -6,11 +6,11 @@ export class WorkoutRepository extends BaseRepository<IWorkoutSession> {
     super(WorkoutSession);
   }
 
-  findByUser(userId: string): Promise<IWorkoutSession[]> {
-    return this.model.find({ userId }).sort({ startTime: -1 }).exec();
+  async findByUser(userId: string): Promise<IWorkoutSession[]> {
+    return this.findMany({ userId });
   }
 
-  findActiveByUser(userId: string): Promise<IWorkoutSession | null> {
-    return this.model.findOne({ userId, endTime: { $exists: false } }).exec();
+  async findActiveByUser(userId: string): Promise<IWorkoutSession | null> {
+    return this.findOne({ userId, endTime: { $exists: false } });
   }
 }

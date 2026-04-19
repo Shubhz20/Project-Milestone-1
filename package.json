@@ -1,17 +1,17 @@
 {
-  "name": "sesd-project-milestone-1",
+  "name": "fitness-tracker-pro",
   "version": "1.0.0",
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
+    "build": "tsc && cd client && npm install && npm run build",
     "start": "node dist/server.js",
     "seed": "ts-node-dev --transpile-only src/scripts/seed.ts",
     "test": "ts-node --transpile-only scripts/test.ts"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ronxak/SESD-Project-Milestone-1.git"
+    "url": "git+https://github.com/Shubhz20/Project-Milestone-1.git"
   },
   "keywords": [
     "fitness",
@@ -25,10 +25,10 @@
   "author": "Shubh",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Ronxak/SESD-Project-Milestone-1/issues"
+    "url": "https://github.com/Shubhz20/Project-Milestone-1/issues"
   },
-  "homepage": "https://github.com/Ronxak/SESD-Project-Milestone-1#readme",
-  "description": "Backend-first Fitness Tracker demonstrating clean architecture, OOP, and design patterns.",
+  "homepage": "https://github.com/Shubhz20/Project-Milestone-1#readme",
+  "description": "Professional Fitness Tracker built with clean architecture and domain-driven design.",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "dotenv": "^17.3.1",

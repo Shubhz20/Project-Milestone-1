@@ -21,14 +21,17 @@ export const createApp = () => {
   app.use(express.json({ limit: "100kb" }));
   app.use(requestLogger);
 
+  // Backend root — when the React SPA is served by Vercel rewrites, this path
+  // is only reached if somebody hits the API host directly. Return a small
+  // JSON that points at the health probe instead of a full HTML landing page.
   app.get("/", (_req, res) => {
     res.json({
-      message: "Fitness Tracker API is running",
+      name: "Fitness Tracker API",
       version: "1.0.0",
-      docs: "See README.md for API documentation",
+      status: "running",
       links: {
         health: "/api/health",
-        auth: "/api/auth",
+        docs: "See README.md",
       },
     });
   });

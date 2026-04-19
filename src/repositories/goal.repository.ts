@@ -6,11 +6,11 @@ export class GoalRepository extends BaseRepository<IFitnessGoal> {
     super(FitnessGoal);
   }
 
-  findByUser(userId: string): Promise<IFitnessGoal[]> {
-    return this.model.find({ userId }).sort({ createdAt: -1 }).exec();
+  async findByUser(userId: string): Promise<IFitnessGoal[]> {
+    return this.findMany({ userId });
   }
 
-  findByProgram(programId: string): Promise<IFitnessGoal[]> {
-    return this.model.find({ programId }).exec();
+  async findByProgram(programId: string): Promise<IFitnessGoal[]> {
+    return this.findMany({ programId });
   }
 }

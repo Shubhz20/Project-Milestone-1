@@ -98,7 +98,7 @@ async function seed(): Promise<void> {
       title: "Touch toes in a forward fold",
       targetValue: 1,
       currentValue: 1,
-      unit: "milestone",
+      unit: "checkpoint",
       isAchieved: true,
       achievedAt: new Date(),
     },

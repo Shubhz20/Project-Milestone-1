@@ -37,7 +37,7 @@ export const Layout = () => {
         <Outlet />
       </main>
       <footer className="app-footer">
-        <small>Fitness Tracker · Backend-first SESD Project Milestone</small>
+        <small>Fitness Tracker · Professional Edition</small>
       </footer>
     </div>
   );
