@@ -31,7 +31,7 @@ export class AuthService {
 
   constructor(private readonly users: UserRepository = new UserRepository()) {}
 
-  async register(input: RegistrationPayload): Promise<IUser> {
+  async register(input: RegistrationPayload): Promise<LoginResult> {
     const { name, email, password } = input;
     if (!name || !email || !password) {
       throw new BadRequestError("Name, email, and password are required");
@@ -41,11 +41,30 @@ export class AuthService {
     if (existing) throw new ConflictError("An account with this email already exists");
 
     const hashed = await bcrypt.hash(password, AuthService.BCRYPT_ROUNDS);
-    return this.users.create({
+    const created = await this.users.create({
       name,
       email: email.toLowerCase(),
       password: hashed,
     } as Partial<IUser>);
+
+    // Sign the JWT immediately so the client can use the returned token
+    // without making a second `/login` call. This matters on serverless
+    // platforms (e.g. Vercel) where the login request can land on a
+    // different lambda replica than the register request, and — when the
+    // app is running in the in-memory fallback mode — would otherwise not
+    // see the newly-created user.
+    const token = jwt.sign({ userId: created._id.toString() }, env.JWT_SECRET, {
+      expiresIn: env.JWT_EXPIRES_IN,
+    } as SignOptions);
+
+    return {
+      token,
+      user: {
+        id: created._id.toString(),
+        name: created.name,
+        email: created.email,
+      },
+    };
   }
 
   async login({ email, password }: AuthCredentials): Promise<LoginResult> {

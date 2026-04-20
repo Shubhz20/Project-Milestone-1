@@ -61,11 +61,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
-    await authApi.register(name, email, password);
-    // Auto-login after a successful registration so the user lands straight
-    // in the app instead of bouncing to /login.
-    await login(email, password);
-  }, [login]);
+    // The backend returns { token, user } on register, so we can skip the
+    // second /login round-trip — important on serverless where a fresh
+    // account might not yet be visible to a different lambda replica.
+    const { token, user: u } = await authApi.register(name, email, password);
+    tokenStore.set(token);
+    persist(u);
+  }, []);
 
   const loginSocial = useCallback(async (provider: string) => {
     const email = `${provider.toLowerCase()}@demo.pro`;

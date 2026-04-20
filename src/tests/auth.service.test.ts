@@ -23,10 +23,16 @@ const makeFakeUser = async (overrides: Partial<IUser> = {}) => {
 };
 
 const buildRepoStub = (overrides: Partial<UserRepository> = {}): UserRepository => {
+  // `create` returns an object with a plausible _id so AuthService.register
+  // (which now signs a JWT keyed to the newly-created user id) has something
+  // to work with.
   const base: Partial<UserRepository> = {
     findByEmail: async () => null,
     findByIdWithPassword: async () => null,
-    create: async (data: any) => data,
+    create: async (data: any) => ({
+      _id: { toString: () => "507f1f77bcf86cd799439011" },
+      ...data,
+    }),
   };
   return { ...base, ...overrides } as UserRepository;
 };
@@ -57,7 +63,10 @@ test("register: hashes password before persisting", async () => {
       findByEmail: async () => null,
       create: async (data: any) => {
         saved = data;
-        return data;
+        return {
+          _id: { toString: () => "507f1f77bcf86cd799439013" },
+          ...data,
+        };
       },
     })
   );
@@ -89,6 +98,28 @@ test("login: rejects wrong password without leaking which credential failed", as
     svc.login({ email: fake.email, password: "nope" }),
     (e) => e instanceof UnauthorizedError && /Invalid email or password/.test(e.message)
   );
+});
+
+test("register: returns token + user so client can skip a /login round-trip", async () => {
+  const svc = new AuthService(
+    buildRepoStub({
+      findByEmail: async () => null,
+      create: async (data: any) => ({
+        _id: { toString: () => "507f1f77bcf86cd799439012" },
+        ...data,
+      }),
+    })
+  );
+  const result = await svc.register({
+    name: "Alice",
+    email: "alice@example.com",
+    password: "plainpw",
+  });
+  assert.ok(result.token, "register must return a token");
+  assert.equal(result.user.email, "alice@example.com");
+  assert.equal(result.user.id, "507f1f77bcf86cd799439012");
+  const payload = jwt.verify(result.token, process.env.JWT_SECRET!) as { userId: string };
+  assert.equal(payload.userId, "507f1f77bcf86cd799439012");
 });
 
 test("login: returns signed JWT carrying userId on success", async () => {

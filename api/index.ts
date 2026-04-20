@@ -13,12 +13,35 @@ import type { IncomingMessage, ServerResponse } from "http";
 import app from "../src/app";
 import { Database } from "../src/config/db";
 
+// Loud, one-time startup banner so the Vercel function logs make the
+// difference between "MongoDB connected" and "in-memory fallback" obvious.
+if (!process.env.MONGO_URI) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    "\n================================================================\n" +
+      "[api] WARNING: MONGO_URI is not set.\n" +
+      "  The API will run in IN-MEMORY FALLBACK mode.\n" +
+      "  Data will NOT persist across serverless invocations, and\n" +
+      "  signup/login may appear to fail intermittently because each\n" +
+      "  Vercel lambda replica has its own independent memory store.\n" +
+      "  Fix: Vercel Dashboard → Project → Settings → Environment\n" +
+      "       Variables → add MONGO_URI (MongoDB Atlas connection string).\n" +
+      "  Also ensure the Atlas IP allowlist permits 0.0.0.0/0 so Vercel\n" +
+      "  can reach your cluster.\n" +
+      "================================================================\n"
+  );
+}
+
 /** Fire the connection attempt exactly once per warm function instance. */
 let dbPromise: Promise<void> | null = null;
 const startDb = (): Promise<void> => {
   if (!dbPromise) {
     dbPromise = Database.getInstance()
       .connect()
+      .then(() => {
+        // eslint-disable-next-line no-console
+        console.log("[api] MongoDB connection established");
+      })
       .catch((err) => {
         // eslint-disable-next-line no-console
         console.error(

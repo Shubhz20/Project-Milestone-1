@@ -11,8 +11,10 @@ export class AuthController {
   constructor(private readonly auth: AuthService = new AuthService()) {}
 
   register = asyncHandler(async (req: Request, res: Response) => {
-    const user = await this.auth.register(req.body);
-    res.status(201).json({ id: user._id, name: user.name, email: user.email });
+    const result = await this.auth.register(req.body);
+    // Return the same shape as /login ({ token, user }) so the client can
+    // persist the JWT immediately without a second round-trip.
+    res.status(201).json(result);
   });
 
   login = asyncHandler(async (req: Request, res: Response) => {

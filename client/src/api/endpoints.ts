@@ -13,8 +13,14 @@ import {
 /** Endpoint helpers grouped by resource. Controllers on the backend map 1:1. */
 
 export const authApi = {
+  /**
+   * Register a new account. The backend now returns `{ token, user }` directly
+   * so the client doesn't need a separate login call — this removes a race on
+   * serverless platforms where the second request could land on a different
+   * lambda replica that can't see the newly-created user.
+   */
   register: (name: string, email: string, password: string) =>
-    request<User>("/api/auth/register", {
+    request<LoginResponse>("/api/auth/register", {
       method: "POST",
       body: { name, email, password },
       auth: false,
