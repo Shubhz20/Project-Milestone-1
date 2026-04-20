@@ -102,7 +102,9 @@ export const LoginPage = () => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between pl-1">
                   <label className="text-xs font-bold uppercase tracking-widest text-white/50">Secure Key</label>
-                  <a href="#" className="text-xs text-primary hover:underline">Forgot?</a>
+                  <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+                    Forgot?
+                  </Link>
                 </div>
                 <div className="relative group">
                   <Lock className="absolute left-4 top-3.5 w-5 h-5 text-white/20 group-focus-within:text-primary transition-colors" />

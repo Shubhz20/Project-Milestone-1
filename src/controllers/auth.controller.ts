@@ -21,4 +21,40 @@ export class AuthController {
     const result = await this.auth.login(req.body);
     res.json(result);
   });
+
+  /**
+   * Start a password-reset flow. Responds 200 with the reset token so the
+   * demo can proceed without an email provider. In a production build,
+   * the notice text makes it clear this would normally be emailed.
+   *
+   * If no account is found we still respond 200 with `accountExists:false`
+   * to avoid leaking which emails are registered, but we include a
+   * friendly message so the UI can surface it.
+   */
+  forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+    const { email } = req.body ?? {};
+    try {
+      const result = await this.auth.forgotPassword(email);
+      res.json({ accountExists: true, ...result });
+    } catch (err: any) {
+      if (err?.code === "NOT_FOUND") {
+        res.json({
+          accountExists: false,
+          notice: "If an account exists for that email, a reset link has been prepared.",
+        });
+        return;
+      }
+      throw err;
+    }
+  });
+
+  /**
+   * Finish the reset: consume the token and return a fresh JWT so the
+   * client can skip the extra /login round-trip — mirrors what we already
+   * do for /register.
+   */
+  resetPassword = asyncHandler(async (req: Request, res: Response) => {
+    const result = await this.auth.resetPassword(req.body);
+    res.json(result);
+  });
 }

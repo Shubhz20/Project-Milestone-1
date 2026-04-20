@@ -4,7 +4,12 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { AuthService } from "../services/auth.service";
 import { UserRepository } from "../repositories/user.repository";
-import { BadRequestError, ConflictError, UnauthorizedError } from "../errors/AppError";
+import {
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+  UnauthorizedError,
+} from "../errors/AppError";
 import { IUser } from "../models/User";
 
 // Set a known JWT secret for the duration of these tests so we can verify
@@ -135,4 +140,78 @@ test("login: returns signed JWT carrying userId on success", async () => {
   assert.equal(user.email, fake.email);
   const payload = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
   assert.equal(payload.userId, fake._id.toString());
+});
+
+test("forgotPassword: rejects unknown email with NotFoundError", async () => {
+  const svc = new AuthService(buildRepoStub());
+  await assert.rejects(
+    svc.forgotPassword("nobody@example.com"),
+    (e) => e instanceof NotFoundError
+  );
+});
+
+test("forgotPassword: issues a token and persists it on the user", async () => {
+  const fake = await makeFakeUser();
+  let savedUpdate: any = null;
+  const svc = new AuthService(
+    buildRepoStub({
+      findByEmail: async () => fake,
+      updateById: async (_id: string, patch: any) => {
+        savedUpdate = patch;
+        return { ...fake, ...patch } as any;
+      },
+    } as any)
+  );
+  const result = await svc.forgotPassword(fake.email);
+  assert.ok(result.resetToken, "token must be returned");
+  assert.match(result.resetToken, /^[a-f0-9]{64}$/, "token should be 32 hex bytes");
+  assert.ok(result.expiresAt, "expiry must be returned");
+  assert.ok(new Date(result.expiresAt).getTime() > Date.now(), "expiry is in the future");
+  assert.ok(savedUpdate, "repository.updateById must be called");
+  assert.equal(savedUpdate.resetPasswordToken, result.resetToken);
+  assert.ok(savedUpdate.resetPasswordExpires instanceof Date);
+});
+
+test("resetPassword: rejects a stale or unknown token", async () => {
+  const svc = new AuthService(
+    buildRepoStub({
+      findByResetToken: async () => null,
+    } as any)
+  );
+  await assert.rejects(
+    svc.resetPassword({ resetToken: "definitely-not-valid-token-1234567890", newPassword: "newpass1" }),
+    (e) => e instanceof BadRequestError && /invalid or has expired/.test(e.message)
+  );
+});
+
+test("resetPassword: accepts a valid token, rehashes, and clears the token", async () => {
+  const fake = await makeFakeUser();
+  (fake as any).resetPasswordToken = "valid-reset-token-xxxxxxxxxxxxxxx";
+  (fake as any).resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+  let savedUpdate: any = null;
+  const svc = new AuthService(
+    buildRepoStub({
+      findByResetToken: async (t: string) =>
+        t === "valid-reset-token-xxxxxxxxxxxxxxx" ? fake : null,
+      updateById: async (_id: string, patch: any) => {
+        savedUpdate = patch;
+        return { ...fake, ...patch } as any;
+      },
+    } as any)
+  );
+
+  const result = await svc.resetPassword({
+    resetToken: "valid-reset-token-xxxxxxxxxxxxxxx",
+    newPassword: "brand-new-secret-123",
+  });
+
+  assert.ok(result.token, "reset must return a fresh JWT");
+  assert.equal(result.user.email, fake.email);
+  assert.ok(savedUpdate, "updateById must be called");
+  assert.notEqual(savedUpdate.password, "brand-new-secret-123", "password must be hashed");
+  const ok = await bcrypt.compare("brand-new-secret-123", savedUpdate.password);
+  assert.ok(ok, "stored hash must verify against the new password");
+  assert.equal(savedUpdate.resetPasswordToken, undefined, "token must be cleared on success");
+  assert.equal(savedUpdate.resetPasswordExpires, undefined, "expiry must be cleared on success");
 });

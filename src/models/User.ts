@@ -22,6 +22,10 @@ export interface IUser extends Document {
   bio?: string;
   /** History of weight measurements over time (for trend analytics). */
   weightHistory?: WeightEntry[];
+  /** One-shot password-reset token (opaque string). Cleared after use. */
+  resetPasswordToken?: string;
+  /** Expiry timestamp for the current reset token. */
+  resetPasswordExpires?: Date;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -60,6 +64,13 @@ const schema = new Schema<IUser>(
     },
     bio: { type: String, maxlength: 280, trim: true },
     weightHistory: { type: [weightEntrySchema], default: [] },
+    /**
+     * Reset-token fields are `select: false` so they never leak into a normal
+     * user fetch and are only read through an explicit opt-in in the
+     * repository (findByResetToken).
+     */
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpires: { type: Date, select: false },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
@@ -70,6 +81,8 @@ schema.set("toJSON", {
   transform: (_doc, ret) => {
     const out = ret as unknown as Record<string, unknown>;
     delete out.password;
+    delete out.resetPasswordToken;
+    delete out.resetPasswordExpires;
     delete out.__v;
     return out;
   },

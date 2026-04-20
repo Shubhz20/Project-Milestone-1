@@ -21,4 +21,32 @@ export class UserRepository extends BaseRepository<IUser> {
     }
     return this.findById(id);
   }
+
+  /**
+   * Look up a user by an un-expired reset-password token. Returns `null`
+   * if no match, the token is empty, or the stored expiry has passed.
+   * The reset-token fields are `select: false`, so we opt-in explicitly
+   * when Mongo is connected; the in-memory store carries them already.
+   */
+  async findByResetToken(token: string): Promise<IUser | null> {
+    if (!token) return null;
+    if (this.model.db.readyState === 1) {
+      return this.model
+        .findOne({
+          resetPasswordToken: token,
+          resetPasswordExpires: { $gt: new Date() },
+        })
+        .select("+resetPasswordToken +resetPasswordExpires")
+        .exec();
+    }
+    // In-memory fallback: linear scan.
+    const all = await this.findMany({} as any);
+    const match = all.find(
+      (u: any) =>
+        u.resetPasswordToken === token &&
+        u.resetPasswordExpires instanceof Date &&
+        u.resetPasswordExpires.getTime() > Date.now()
+    );
+    return (match as IUser | undefined) ?? null;
+  }
 }

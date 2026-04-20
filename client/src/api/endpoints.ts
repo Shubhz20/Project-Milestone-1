@@ -6,7 +6,6 @@ import {
   ProfileDashboard,
   ProfileUser,
   RecommendationsResponse,
-  User,
   WorkoutSession,
 } from "./types";
 
@@ -29,6 +28,31 @@ export const authApi = {
     request<LoginResponse>("/api/auth/login", {
       method: "POST",
       body: { email, password },
+      auth: false,
+    }),
+  /**
+   * Step 1 of password recovery. The demo backend returns the reset token
+   * inline (in production it would be emailed) so the UI can show it.
+   */
+  forgotPassword: (email: string) =>
+    request<{
+      accountExists: boolean;
+      resetToken?: string;
+      expiresAt?: string;
+      notice: string;
+    }>("/api/auth/forgot-password", {
+      method: "POST",
+      body: { email },
+      auth: false,
+    }),
+  /**
+   * Step 2: exchange a reset token + new password for a fresh JWT so the
+   * user is logged in immediately.
+   */
+  resetPassword: (resetToken: string, newPassword: string) =>
+    request<LoginResponse>("/api/auth/reset-password", {
+      method: "POST",
+      body: { resetToken, newPassword },
       auth: false,
     }),
 };

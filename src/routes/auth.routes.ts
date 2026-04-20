@@ -1,7 +1,12 @@
 import { Router } from "express";
 import { AuthController } from "../controllers/auth.controller";
 import { validateRequest } from "../middlewares/validate.middleware";
-import { loginSchema, registerSchema } from "../validators/auth.validator";
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+} from "../validators/auth.validator";
 
 const router = Router();
 const controller = new AuthController();
@@ -25,5 +30,23 @@ router.get("/login", (_req, res) => {
   });
 });
 router.post("/login", validateRequest(loginSchema), controller.login);
+
+/**
+ * Password-reset flow.
+ *   POST /forgot-password { email }
+ *     → { resetToken, expiresAt, notice }   (demo returns the token inline)
+ *   POST /reset-password  { resetToken, newPassword }
+ *     → { token, user }                      (logs the user in on success)
+ */
+router.post(
+  "/forgot-password",
+  validateRequest(forgotPasswordSchema),
+  controller.forgotPassword
+);
+router.post(
+  "/reset-password",
+  validateRequest(resetPasswordSchema),
+  controller.resetPassword
+);
 
 export default router;
